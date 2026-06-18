@@ -15,12 +15,13 @@ import { CardItem } from "./CardItem";
 interface KanbanBoardProps {
   lists: BoardList[];
   cards: Card[];
+  assigneeNames: Record<string, string>;
   onMoveCard: (cardId: string, listId: string, position: number) => void;
   onSelectCard: (card: Card) => void;
   onAddCard: (listId: string) => void;
 }
 
-export function KanbanBoard({ lists, cards, onMoveCard, onSelectCard, onAddCard }: KanbanBoardProps) {
+export function KanbanBoard({ lists, cards, assigneeNames, onMoveCard, onSelectCard, onAddCard }: KanbanBoardProps) {
   const [activeCard, setActiveCard] = useState<Card | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -57,6 +58,7 @@ export function KanbanBoard({ lists, cards, onMoveCard, onSelectCard, onAddCard 
             key={list.id}
             list={list}
             cards={cardsByList[list.id] ?? []}
+            assigneeNames={assigneeNames}
             onSelectCard={onSelectCard}
             onAddCard={onAddCard}
           />
@@ -72,7 +74,15 @@ export function KanbanBoard({ lists, cards, onMoveCard, onSelectCard, onAddCard 
           <span className="text-sm">Add list</span>
         </button>
       </div>
-      <DragOverlay>{activeCard ? <CardItem card={activeCard} isDragging /> : null}</DragOverlay>
+      <DragOverlay>
+        {activeCard ? (
+          <CardItem
+            card={activeCard}
+            assigneeName={activeCard.assignee_id ? assigneeNames[activeCard.assignee_id] : undefined}
+            isDragging
+          />
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }

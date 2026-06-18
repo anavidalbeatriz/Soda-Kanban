@@ -12,5 +12,10 @@ export const btnSecondary =
 export const btnGhost =
   "text-sm text-gray-400 hover:text-gray-200 transition-colors";
 
+export const errorClass = "text-red-400 text-xs mt-1";
+
+export const inputErrorClass =
+  "border-red-500 focus:border-red-500 focus:ring-red-500";
+
 export const cardClass =
   "bg-gray-900 border border-gray-800 rounded-xl p-5 hover:border-gray-600 hover:bg-gray-800/80 transition-all";

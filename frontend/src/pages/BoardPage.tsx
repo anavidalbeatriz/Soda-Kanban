@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-import { boardApi } from "../api/client";
+import { boardApi, workspaceApi } from "../api/client";
 import { KanbanBoard } from "../components/KanbanBoard";
 import { CardDetailModal } from "../components/CardDetailModal";
 import { CardFormModal, type CardFormData } from "../components/CardFormModal";
@@ -24,6 +24,14 @@ export function BoardPage() {
     enabled: !!boardId,
   });
 
+  const { data: members = [] } = useQuery({
+    queryKey: ["workspace-members", data?.board.workspace_id],
+    queryFn: () => workspaceApi.members(data!.board.workspace_id).then((r) => r.data),
+    enabled: !!data?.board.workspace_id,
+  });
+
+  const assigneeNames = Object.fromEntries(members.map((m) => [m.user_id, m.user.name]));
+
   const moveMutation = useMutation({
     mutationFn: ({ cardId, listId, position }: { cardId: string; listId: string; position: number }) =>
       boardApi.moveCard(cardId, listId, position),
@@ -39,8 +47,9 @@ export function BoardPage() {
     mutationFn: ({ listId, ...payload }: CardFormData & { listId: string }) =>
       boardApi.createCard(listId, {
         title: payload.title,
-        description: payload.description || null,
+        description: payload.description,
         due_date: payload.due_date || null,
+        assignee_id: payload.assignee_id || null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["board", boardId] });
@@ -109,13 +118,14 @@ export function BoardPage() {
         <KanbanBoard
           lists={data.lists}
           cards={data.cards}
+          assigneeNames={assigneeNames}
           onMoveCard={(cardId, listId, position) => moveMutation.mutate({ cardId, listId, position })}
           onSelectCard={setSelectedCard}
           onAddCard={openCardForm}
         />
       </main>
 
-      <CardDetailModal card={selectedCard} onClose={() => setSelectedCard(null)} />
+      <CardDetailModal card={selectedCard} onClose={() => setSelectedCard(null)} members={members} />
 
       <CardFormModal
         open={cardFormOpen}
@@ -125,6 +135,7 @@ export function BoardPage() {
         lists={data.lists}
         listId={targetListId}
         onListChange={setTargetListId}
+        members={members}
       />
     </div>
   );

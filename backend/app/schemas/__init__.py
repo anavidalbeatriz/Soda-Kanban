@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.db.models import BoardRole, BoardVisibility, NotificationEventType, WorkspaceRole
 
@@ -12,7 +12,21 @@ class UserRead(BaseModel):
     id: uuid.UUID
     email: EmailStr
     name: str
+    phone: str | None = None
+    avatar_url: str | None = None
     created_at: datetime
+
+
+class UserUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    phone: str | None = Field(default=None, max_length=50)
+
+    @field_validator("name")
+    @classmethod
+    def name_not_blank(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("Name is required")
+        return v.strip() if v is not None else v
 
 
 class RegisterRequest(BaseModel):
@@ -116,10 +130,31 @@ class ListRead(BaseModel):
 
 class CardCreate(BaseModel):
     title: str = Field(min_length=1, max_length=500)
-    description: str | None = None
+    description: str = Field(min_length=1)
     assignee_id: uuid.UUID | None = None
     due_date: date | None = None
     position: int | None = None
+
+    @field_validator("title")
+    @classmethod
+    def title_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Title is required")
+        return v.strip()
+
+    @field_validator("description")
+    @classmethod
+    def description_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Description is required")
+        return v.strip()
+
+    @field_validator("due_date")
+    @classmethod
+    def due_date_not_past(cls, v: date | None) -> date | None:
+        if v is not None and v < date.today():
+            raise ValueError("Due date cannot be in the past")
+        return v
 
 
 class CardUpdate(BaseModel):
@@ -129,6 +164,27 @@ class CardUpdate(BaseModel):
     due_date: date | None = None
     list_id: uuid.UUID | None = None
     position: int | None = None
+
+    @field_validator("title")
+    @classmethod
+    def title_not_blank(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("Title is required")
+        return v.strip() if v is not None else v
+
+    @field_validator("description")
+    @classmethod
+    def description_not_blank(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("Description is required")
+        return v.strip() if v is not None else v
+
+    @field_validator("due_date")
+    @classmethod
+    def due_date_not_past(cls, v: date | None) -> date | None:
+        if v is not None and v < date.today():
+            raise ValueError("Due date cannot be in the past")
+        return v
 
 
 class CardMove(BaseModel):

@@ -10,7 +10,6 @@ interface AppHeaderProps {
 
 export function AppHeader({ backTo, title, actions }: AppHeaderProps) {
   const user = useAuthStore((s) => s.user);
-  const clearAuth = useAuthStore((s) => s.clearAuth);
 
   return (
     <header className="border-b border-gray-800 px-4 md:px-6 py-4">
@@ -19,13 +18,15 @@ export function AppHeader({ backTo, title, actions }: AppHeaderProps) {
           SODA KANBA
         </Link>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-400 hidden sm:inline">{user?.name}</span>
+          <Link to="/profile" className="text-sm text-gray-400 hidden sm:inline hover:text-white transition-colors">
+            {user?.name}
+          </Link>
+          <Link to="/profile" className={`${btnGhost} text-blue-400 hover:text-blue-300`}>
+            Profile
+          </Link>
           <Link to="/settings" className={`${btnGhost} text-blue-400 hover:text-blue-300`}>
             Settings
           </Link>
-          <button onClick={clearAuth} className={btnGhost}>
-            Logout
-          </button>
         </div>
       </div>
 

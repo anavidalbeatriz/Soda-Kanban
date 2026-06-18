@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import get_current_user
 from app.db.models import NotificationEventType, NotificationPreference, User
 from app.db.session import get_db
-from app.schemas import NotificationPreferenceRead, NotificationPreferenceUpdate, UserRead
+from app.schemas import NotificationPreferenceRead, NotificationPreferenceUpdate, UserRead, UserUpdate
+from app.services.avatars import avatar_file_path, save_avatar
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -13,6 +17,53 @@ router = APIRouter(prefix="/users", tags=["users"])
 @router.get("/me", response_model=UserRead)
 async def get_me(user: User = Depends(get_current_user)) -> User:
     return user
+
+
+@router.patch("/me", response_model=UserRead)
+async def update_me(
+    payload: UserUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    if payload.name is not None:
+        user.name = payload.name
+    if payload.phone is not None:
+        user.phone = payload.phone.strip() or None
+    await db.flush()
+    await db.refresh(user)
+    return user
+
+
+@router.post("/me/avatar", response_model=UserRead)
+async def upload_avatar(
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    saved_path = await save_avatar(user.id, file)
+    user.avatar_url = saved_path
+    await db.flush()
+    await db.refresh(user)
+    return user
+
+
+@router.get("/me/avatar")
+async def get_my_avatar(user: User = Depends(get_current_user)) -> FileResponse:
+    path = avatar_file_path(user.id)
+    if not path or not path.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Avatar not found")
+    return FileResponse(path, media_type=_media_type_for_path(path))
+
+
+def _media_type_for_path(path: Path) -> str:
+    mapping = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".gif": "image/gif",
+    }
+    return mapping.get(path.suffix.lower(), "application/octet-stream")
 
 
 @router.get("/me/notification-preferences", response_model=list[NotificationPreferenceRead])

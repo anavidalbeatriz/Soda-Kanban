@@ -5,10 +5,11 @@ import { CardItem } from "./CardItem";
 
 interface SortableCardProps {
   card: Card;
+  assigneeName?: string;
   onSelect: () => void;
 }
 
-export function SortableCard({ card, onSelect }: SortableCardProps) {
+export function SortableCard({ card, assigneeName, onSelect }: SortableCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: card.id,
   });
@@ -21,7 +22,7 @@ export function SortableCard({ card, onSelect }: SortableCardProps) {
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <CardItem card={card} onClick={onSelect} />
+      <CardItem card={card} assigneeName={assigneeName} onClick={onSelect} />
     </div>
   );
 }

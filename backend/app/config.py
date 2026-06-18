@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
 
     presigned_url_expire_seconds: int = 900
+    avatar_upload_dir: str = "uploads/avatars"
+    max_avatar_bytes: int = 5 * 1024 * 1024
 
 
 @lru_cache

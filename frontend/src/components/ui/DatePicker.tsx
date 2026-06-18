@@ -22,6 +22,7 @@ interface DatePickerProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  disablePast?: boolean;
 }
 
 function parseDate(value: string): Date | null {
@@ -48,6 +49,14 @@ function isSameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+function startOfDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function isPastDate(date: Date): boolean {
+  return startOfDay(date) < startOfDay(new Date());
+}
+
 function buildCalendarDays(year: number, month: number): { date: Date; inMonth: boolean }[] {
   const first = new Date(year, month, 1);
   const startOffset = first.getDay();
@@ -72,7 +81,7 @@ function NavButton({ onClick, children }: { onClick: () => void; children: React
   );
 }
 
-export function DatePicker({ value, onChange, placeholder = "Select date" }: DatePickerProps) {
+export function DatePicker({ value, onChange, placeholder = "Select date", disablePast }: DatePickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [viewYear, setViewYear] = useState(() => parseDate(value)?.getFullYear() ?? new Date().getFullYear());
@@ -120,6 +129,7 @@ export function DatePicker({ value, onChange, placeholder = "Select date" }: Dat
   };
 
   const selectDate = (date: Date) => {
+    if (disablePast && isPastDate(date)) return;
     onChange(toIso(date));
     setOpen(false);
   };
@@ -186,20 +196,24 @@ export function DatePicker({ value, onChange, placeholder = "Select date" }: Dat
               {days.map(({ date, inMonth }) => {
                 const isSelected = selected ? isSameDay(date, selected) : false;
                 const isToday = isSameDay(date, today);
+                const isDisabled = disablePast && isPastDate(date);
 
                 return (
                   <button
                     key={date.toISOString()}
                     type="button"
                     onClick={() => selectDate(date)}
+                    disabled={isDisabled}
                     className={[
                       "h-9 w-full rounded-md text-sm transition-colors",
-                      isSelected
-                        ? "bg-[#1e3a5f] font-semibold text-white"
-                        : inMonth
-                          ? "text-white hover:bg-gray-800"
-                          : "text-gray-600 hover:bg-gray-800/50",
-                      !isSelected && isToday ? "ring-1 ring-gray-600" : "",
+                      isDisabled
+                        ? "cursor-not-allowed text-gray-700"
+                        : isSelected
+                          ? "bg-[#1e3a5f] font-semibold text-white"
+                          : inMonth
+                            ? "text-white hover:bg-gray-800"
+                            : "text-gray-600 hover:bg-gray-800/50",
+                      !isSelected && isToday && !isDisabled ? "ring-1 ring-gray-600" : "",
                     ].join(" ")}
                   >
                     {date.getDate()}

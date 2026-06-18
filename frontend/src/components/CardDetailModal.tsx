@@ -1,28 +1,38 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Card } from "../types";
+import type { Card, WorkspaceMember } from "../types";
 import { boardApi } from "../api/client";
+import { CardFields } from "./CardFields";
 import { Modal } from "./ui/Modal";
-import { DatePicker } from "./ui/DatePicker";
-import { btnPrimary, inputClass, labelClass } from "./ui/styles";
+import { btnPrimary, inputClass } from "./ui/styles";
+import {
+  hasCardFormErrors,
+  validateCardForm,
+  type CardFormErrors,
+} from "../utils/cardValidation";
 
 interface CardDetailModalProps {
   card: Card | null;
   onClose: () => void;
+  members: WorkspaceMember[];
 }
 
-export function CardDetailModal({ card, onClose }: CardDetailModalProps) {
+export function CardDetailModal({ card, onClose, members }: CardDetailModalProps) {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [assigneeId, setAssigneeId] = useState("");
   const [comment, setComment] = useState("");
+  const [errors, setErrors] = useState<CardFormErrors>({});
 
   useEffect(() => {
     if (card) {
       setTitle(card.title);
       setDescription(card.description ?? "");
       setDueDate(card.due_date ? card.due_date.slice(0, 10) : "");
+      setAssigneeId(card.assignee_id ?? "");
+      setErrors({});
     }
   }, [card]);
 
@@ -35,9 +45,10 @@ export function CardDetailModal({ card, onClose }: CardDetailModalProps) {
   const updateMutation = useMutation({
     mutationFn: () =>
       boardApi.updateCard(card!.id, {
-        title,
-        description,
+        title: title.trim(),
+        description: description.trim(),
         due_date: dueDate || null,
+        assignee_id: assigneeId || null,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["board"] });
@@ -52,31 +63,34 @@ export function CardDetailModal({ card, onClose }: CardDetailModalProps) {
     },
   });
 
+  const handleSave = () => {
+    const formErrors = validateCardForm({
+      title,
+      description,
+      due_date: dueDate,
+      assignee_id: assigneeId,
+    });
+    setErrors(formErrors);
+    if (hasCardFormErrors(formErrors)) return;
+    updateMutation.mutate();
+  };
+
   return (
     <Modal open={!!card} onClose={onClose} title="Card details" size="lg">
       {card && (
         <div className="space-y-4">
-          <div>
-            <label className={labelClass}>Title</label>
-            <input className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-
-          <div>
-            <label className={labelClass}>Description</label>
-            <textarea
-              className={`${inputClass} min-h-[100px] resize-y`}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className={labelClass}>Due date</label>
-            <DatePicker value={dueDate} onChange={setDueDate} />
-          </div>
+          <CardFields
+            values={{ title, description, due_date: dueDate, assignee_id: assigneeId }}
+            errors={errors}
+            members={members}
+            onTitleChange={setTitle}
+            onDescriptionChange={setDescription}
+            onDueDateChange={setDueDate}
+            onAssigneeChange={setAssigneeId}
+          />
 
           <button
-            onClick={() => updateMutation.mutate()}
+            onClick={handleSave}
             disabled={updateMutation.isPending}
             className={`w-full ${btnPrimary} py-2.5`}
           >

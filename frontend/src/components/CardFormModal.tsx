@@ -1,13 +1,19 @@
 import { useEffect, useState } from "react";
-import type { BoardList } from "../types";
+import type { BoardList, WorkspaceMember } from "../types";
+import { CardFields } from "./CardFields";
 import { Modal } from "./ui/Modal";
-import { DatePicker } from "./ui/DatePicker";
 import { btnPrimary, btnSecondary, inputClass, labelClass } from "./ui/styles";
+import {
+  hasCardFormErrors,
+  validateCardForm,
+  type CardFormErrors,
+} from "../utils/cardValidation";
 
 export interface CardFormData {
   title: string;
   description: string;
   due_date: string;
+  assignee_id: string;
 }
 
 interface CardFormModalProps {
@@ -18,6 +24,7 @@ interface CardFormModalProps {
   lists?: BoardList[];
   listId?: string;
   onListChange?: (listId: string) => void;
+  members: WorkspaceMember[];
 }
 
 export function CardFormModal({
@@ -28,23 +35,41 @@ export function CardFormModal({
   lists,
   listId,
   onListChange,
+  members,
 }: CardFormModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [assigneeId, setAssigneeId] = useState("");
+  const [errors, setErrors] = useState<CardFormErrors>({});
 
   useEffect(() => {
     if (open) {
       setTitle("");
       setDescription("");
       setDueDate("");
+      setAssigneeId("");
+      setErrors({});
     }
   }, [open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) return;
-    onSubmit({ title: title.trim(), description: description.trim(), due_date: dueDate });
+    const formErrors = validateCardForm({
+      title,
+      description,
+      due_date: dueDate,
+      assignee_id: assigneeId,
+    });
+    setErrors(formErrors);
+    if (hasCardFormErrors(formErrors)) return;
+
+    onSubmit({
+      title: title.trim(),
+      description: description.trim(),
+      due_date: dueDate,
+      assignee_id: assigneeId,
+    });
   };
 
   return (
@@ -67,38 +92,22 @@ export function CardFormModal({
           </div>
         )}
 
-        <div>
-          <label className={labelClass}>Title</label>
-          <input
-            className={inputClass}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Card name"
-            autoFocus
-            required
-          />
-        </div>
-
-        <div>
-          <label className={labelClass}>Description</label>
-          <textarea
-            className={`${inputClass} min-h-[100px] resize-y`}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Add a description..."
-          />
-        </div>
-
-        <div>
-          <label className={labelClass}>Due date</label>
-          <DatePicker value={dueDate} onChange={setDueDate} />
-        </div>
+        <CardFields
+          values={{ title, description, due_date: dueDate, assignee_id: assigneeId }}
+          errors={errors}
+          members={members}
+          onTitleChange={setTitle}
+          onDescriptionChange={setDescription}
+          onDueDateChange={setDueDate}
+          onAssigneeChange={setAssigneeId}
+          autoFocusTitle
+        />
 
         <div className="flex justify-end gap-3 pt-2">
           <button type="button" onClick={onClose} className={btnSecondary}>
             Cancel
           </button>
-          <button type="submit" disabled={!title.trim() || isSubmitting} className={btnPrimary}>
+          <button type="submit" disabled={isSubmitting} className={btnPrimary}>
             {isSubmitting ? "Creating..." : "Create card"}
           </button>
         </div>

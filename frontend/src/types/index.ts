@@ -2,6 +2,8 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  phone: string | null;
+  avatar_url: string | null;
   created_at: string;
 }
 
@@ -10,6 +12,13 @@ export interface Workspace {
   name: string;
   owner_id: string;
   created_at: string;
+}
+
+export interface WorkspaceMember {
+  id: string;
+  user_id: string;
+  role: string;
+  user: User;
 }
 
 export interface Board {

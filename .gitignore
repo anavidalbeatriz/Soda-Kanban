@@ -15,6 +15,9 @@ dist/
 # OS
 .DS_Store
 
+# Uploads
+backend/uploads/
+
 # Terraform
 .terraform/
 *.tfstate

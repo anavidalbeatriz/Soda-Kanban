@@ -6,11 +6,12 @@ import { SortableCard } from "./SortableCard";
 interface KanbanColumnProps {
   list: BoardList;
   cards: Card[];
+  assigneeNames: Record<string, string>;
   onSelectCard: (card: Card) => void;
   onAddCard: (listId: string) => void;
 }
 
-export function KanbanColumn({ list, cards, onSelectCard, onAddCard }: KanbanColumnProps) {
+export function KanbanColumn({ list, cards, assigneeNames, onSelectCard, onAddCard }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `list-${list.id}` });
 
   return (
@@ -38,7 +39,12 @@ export function KanbanColumn({ list, cards, onSelectCard, onAddCard }: KanbanCol
       <SortableContext items={cards.map((c) => c.id)} strategy={verticalListSortingStrategy}>
         <div className="space-y-2 min-h-[60px] flex-1 overflow-y-auto">
           {cards.map((card) => (
-            <SortableCard key={card.id} card={card} onSelect={() => onSelectCard(card)} />
+            <SortableCard
+              key={card.id}
+              card={card}
+              assigneeName={card.assignee_id ? assigneeNames[card.assignee_id] : undefined}
+              onSelect={() => onSelectCard(card)}
+            />
           ))}
         </div>
       </SortableContext>

@@ -1,8 +1,8 @@
 import type { Card } from "../types";
-import { useAuthStore } from "../store/auth";
 
 interface CardItemProps {
   card: Card;
+  assigneeName?: string;
   onClick?: () => void;
   isDragging?: boolean;
 }
@@ -21,10 +21,7 @@ function formatDueDate(dateStr: string): string {
   return date.toLocaleDateString("en-US", { day: "numeric", month: "short" });
 }
 
-export function CardItem({ card, onClick, isDragging }: CardItemProps) {
-  const user = useAuthStore((s) => s.user);
-  const showAvatar = card.assignee_id && user && card.assignee_id === user.id;
-
+export function CardItem({ card, assigneeName, onClick, isDragging }: CardItemProps) {
   return (
     <div
       onClick={onClick}
@@ -50,9 +47,12 @@ export function CardItem({ card, onClick, isDragging }: CardItemProps) {
           )}
         </div>
 
-        {showAvatar && (
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-xs font-semibold text-white">
-            {getInitials(user.name)}
+        {assigneeName && (
+          <div
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-xs font-semibold text-white"
+            title={assigneeName}
+          >
+            {getInitials(assigneeName)}
           </div>
         )}
       </div>

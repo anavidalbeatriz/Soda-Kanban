@@ -8,6 +8,7 @@ import type {
   TokenResponse,
   User,
   Workspace,
+  WorkspaceMember,
 } from "../types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
@@ -60,6 +61,16 @@ export const authApi = {
 
 export const userApi = {
   me: () => api.get<User>("/users/me"),
+  updateMe: (payload: { name?: string; phone?: string | null }) =>
+    api.patch<User>("/users/me", payload).then((r) => r.data),
+  uploadAvatar: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post<User>("/users/me/avatar", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }).then((r) => r.data);
+  },
+  fetchAvatar: () => api.get<Blob>("/users/me/avatar", { responseType: "blob" }).then((r) => r.data),
   getNotificationPreferences: () =>
     api.get<NotificationPreference[]>("/users/me/notification-preferences"),
   updateNotificationPreferences: (preferences: NotificationPreference[]) =>
@@ -74,6 +85,8 @@ export const workspaceApi = {
     api.post<Board>(`/workspaces/${workspaceId}/boards`, { name, visibility }),
   createInvitation: (workspaceId: string, email?: string, boardId?: string) =>
     api.post(`/workspaces/${workspaceId}/invitations`, { email, board_id: boardId }),
+  members: (workspaceId: string) =>
+    api.get<WorkspaceMember[]>(`/workspaces/${workspaceId}/members`),
 };
 
 export const boardApi = {

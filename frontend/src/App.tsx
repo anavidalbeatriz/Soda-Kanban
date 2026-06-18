@@ -5,6 +5,8 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { WorkspacePage } from "./pages/WorkspacePage";
 import { BoardPage } from "./pages/BoardPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { ProfilePage } from "./pages/ProfilePage";
+import { ProfileEditPage } from "./pages/ProfileEditPage";
 
 function ProtectedRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -28,6 +30,8 @@ export default function App() {
         <Route path="/workspaces/:workspaceId" element={<WorkspacePage />} />
         <Route path="/boards/:boardId" element={<BoardPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/profile/edit" element={<ProfileEditPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
