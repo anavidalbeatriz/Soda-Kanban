@@ -5,8 +5,8 @@ aws_region    = "us-east-1"
 project_name  = "soda-kanba"
 environment   = "prod"
 
-ses_domain      = "example.com"
-ses_from_email  = "noreply@example.com"
+ses_domain     = "kfsoda.tech"
+ses_from_email = "gabriel@kfsoda.tech"
 
 # Optional: custom domain (requires route53_zone_id)
 # domain_name     = "app.example.com"
