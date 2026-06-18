@@ -32,13 +32,13 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
       onClick={onClose}
     >
       <div
-        className={`w-full ${sizeClass} rounded-xl bg-gray-900 border border-gray-700 shadow-2xl`}
+        className={`w-full ${sizeClass} max-h-[90vh] flex flex-col rounded-xl bg-gray-900 border border-gray-700 shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
       >
-        <div className="flex items-center justify-between border-b border-gray-700 px-6 py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-700 px-6 py-4">
           <h2 id="modal-title" className="text-lg font-semibold text-white">
             {title}
           </h2>
@@ -52,7 +52,7 @@ export function Modal({ open, onClose, title, children, size = "md" }: ModalProp
             </svg>
           </button>
         </div>
-        <div className="px-6 py-5">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
       </div>
     </div>
   );

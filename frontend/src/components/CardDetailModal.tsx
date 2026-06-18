@@ -55,7 +55,7 @@ export function CardDetailModal({ card, onClose }: CardDetailModalProps) {
   return (
     <Modal open={!!card} onClose={onClose} title="Card details" size="lg">
       {card && (
-        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+        <div className="space-y-4">
           <div>
             <label className={labelClass}>Title</label>
             <input className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)} />

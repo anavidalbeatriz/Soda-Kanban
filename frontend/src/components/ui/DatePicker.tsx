@@ -103,6 +103,12 @@ export function DatePicker({ value, onChange, placeholder = "Select date" }: Dat
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
+  useEffect(() => {
+    if (open && containerRef.current) {
+      containerRef.current.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }, [open]);
+
   const goMonth = (delta: number) => {
     const d = new Date(viewYear, viewMonth + delta, 1);
     setViewYear(d.getFullYear());
@@ -138,7 +144,7 @@ export function DatePicker({ value, onChange, placeholder = "Select date" }: Dat
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-[60] mt-2 w-[300px] rounded-xl border border-gray-700 bg-[#222226] shadow-2xl">
+        <div className="mt-2 w-full rounded-xl border border-gray-700 bg-[#222226] shadow-2xl">
           <div className="flex items-center justify-between border-b border-gray-700/80 px-4 py-3">
             <span className="text-sm font-semibold text-white">Dates</span>
             <button
