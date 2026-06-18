@@ -1,4 +1,4 @@
-# SODA KANBA
+# SODA KANBAN
 
 A Kanban application with workspaces, real-time board sync, email notifications, and AWS deployment.
 
