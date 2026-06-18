@@ -1,0 +1,142 @@
+import { FormEvent, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { authApi } from "../api/client";
+import { useAuthStore } from "../store/auth";
+import { btnPrimary, inputClass, labelClass } from "../components/ui/styles";
+
+function AuthFormShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
+      <div className="w-full max-w-md rounded-xl border border-gray-800 bg-gray-900 p-8 shadow-2xl">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function LoginPage() {
+  const navigate = useNavigate();
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+    try {
+      const { data } = await authApi.login({ email, password });
+      setAuth(data.user, data.access_token, data.refresh_token);
+      navigate("/");
+    } catch {
+      setError("Invalid email or password");
+    }
+  };
+
+  return (
+    <AuthFormShell>
+      <h1 className="text-2xl font-bold text-white mb-6">Sign in to KIS-TRELLO</h1>
+      {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className={labelClass}>Email</label>
+          <input
+            type="email"
+            required
+            className={inputClass}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Password</label>
+          <input
+            type="password"
+            required
+            className={inputClass}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        <button type="submit" className={`w-full ${btnPrimary} py-2.5`}>
+          Sign in
+        </button>
+      </form>
+      <p className="text-center text-sm text-gray-400 mt-6">
+        No account?{" "}
+        <Link to="/register" className="text-blue-400 hover:text-blue-300 hover:underline">
+          Register
+        </Link>
+      </p>
+    </AuthFormShell>
+  );
+}
+
+export function RegisterPage() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const inviteToken = searchParams.get("token") ?? undefined;
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+    try {
+      const { data } = await authApi.register({ name, email, password, invite_token: inviteToken });
+      setAuth(data.user, data.access_token, data.refresh_token);
+      navigate("/");
+    } catch {
+      setError("Registration failed. Email may already be in use.");
+    }
+  };
+
+  return (
+    <AuthFormShell>
+      <h1 className="text-2xl font-bold text-white mb-2">Create account</h1>
+      {inviteToken && (
+        <p className="text-sm text-green-400 mb-4">You have been invited to join a workspace.</p>
+      )}
+      {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className={labelClass}>Name</label>
+          <input required className={inputClass} value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div>
+          <label className={labelClass}>Email</label>
+          <input
+            type="email"
+            required
+            className={inputClass}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Password</label>
+          <input
+            type="password"
+            required
+            minLength={8}
+            className={inputClass}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        <button type="submit" className={`w-full ${btnPrimary} py-2.5`}>
+          Register
+        </button>
+      </form>
+      <p className="text-center text-sm text-gray-400 mt-6">
+        Already have an account?{" "}
+        <Link to="/login" className="text-blue-400 hover:text-blue-300 hover:underline">
+          Sign in
+        </Link>
+      </p>
+    </AuthFormShell>
+  );
+}
