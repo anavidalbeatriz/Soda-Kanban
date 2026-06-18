@@ -6,12 +6,13 @@ import { PageShell } from "../components/layout/PageShell";
 import { InputModal } from "../components/ui/InputModal";
 import { btnPrimary, btnSecondary, cardClass } from "../components/ui/styles";
 import { workspaceApi } from "../api/client";
+import { useAuthStore } from "../store/auth";
 
 export function WorkspacePage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((s) => s.user);
   const [boardModalOpen, setBoardModalOpen] = useState(false);
-  const [inviteModalOpen, setInviteModalOpen] = useState(false);
 
   const { data: boards = [], isLoading } = useQuery({
     queryKey: ["boards", workspaceId],
@@ -19,19 +20,21 @@ export function WorkspacePage() {
     enabled: !!workspaceId,
   });
 
+  const { data: members = [] } = useQuery({
+    queryKey: ["workspace-members", workspaceId],
+    queryFn: () => workspaceApi.members(workspaceId!).then((r) => r.data),
+    enabled: !!workspaceId,
+  });
+
+  const currentMembership = members.find((m) => m.user_id === currentUser?.id);
+  const isAdmin =
+    currentMembership?.role === "owner" || currentMembership?.role === "admin";
+
   const createBoard = useMutation({
     mutationFn: (name: string) => workspaceApi.createBoard(workspaceId!, name),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["boards", workspaceId] });
       setBoardModalOpen(false);
-    },
-  });
-
-  const inviteUser = useMutation({
-    mutationFn: (email: string) => workspaceApi.createInvitation(workspaceId!, email),
-    onSuccess: (res) => {
-      setInviteModalOpen(false);
-      alert(`Invite link: ${res.data.invite_url}`);
     },
   });
 
@@ -45,9 +48,11 @@ export function WorkspacePage() {
             <button onClick={() => setBoardModalOpen(true)} className={btnPrimary}>
               New board
             </button>
-            <button onClick={() => setInviteModalOpen(true)} className={btnSecondary}>
-              Invite user
-            </button>
+            {isAdmin && (
+              <Link to={`/workspaces/${workspaceId}/admin`} className={btnSecondary}>
+                Manage team
+              </Link>
+            )}
           </>
         }
       />
@@ -78,18 +83,6 @@ export function WorkspacePage() {
         submitLabel="Create board"
         onSubmit={(name) => createBoard.mutate(name)}
         isSubmitting={createBoard.isPending}
-      />
-
-      <InputModal
-        open={inviteModalOpen}
-        onClose={() => setInviteModalOpen(false)}
-        title="Invite user"
-        label="Email"
-        type="email"
-        placeholder="user@example.com"
-        submitLabel="Send invite"
-        onSubmit={(email) => inviteUser.mutate(email)}
-        isSubmitting={inviteUser.isPending}
       />
     </div>
   );

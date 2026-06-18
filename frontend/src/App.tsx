@@ -3,6 +3,7 @@ import { useAuthStore } from "./store/auth";
 import { LoginPage, RegisterPage } from "./pages/AuthPages";
 import { DashboardPage } from "./pages/DashboardPage";
 import { WorkspacePage } from "./pages/WorkspacePage";
+import { WorkspaceAdminPage } from "./pages/WorkspaceAdminPage";
 import { BoardPage } from "./pages/BoardPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ProfilePage } from "./pages/ProfilePage";
@@ -33,6 +34,14 @@ export default function App() {
           element={
             <WorkspaceGuard>
               <WorkspacePage />
+            </WorkspaceGuard>
+          }
+        />
+        <Route
+          path="/workspaces/:workspaceId/admin"
+          element={
+            <WorkspaceGuard>
+              <WorkspaceAdminPage />
             </WorkspaceGuard>
           }
         />

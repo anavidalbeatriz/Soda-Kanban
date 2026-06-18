@@ -4,6 +4,7 @@ import type {
   BoardDetail,
   Card,
   Comment,
+  Invitation,
   NotificationPreference,
   TokenResponse,
   User,
@@ -83,10 +84,18 @@ export const workspaceApi = {
   boards: (workspaceId: string) => api.get<Board[]>(`/workspaces/${workspaceId}/boards`),
   createBoard: (workspaceId: string, name: string, visibility = "team") =>
     api.post<Board>(`/workspaces/${workspaceId}/boards`, { name, visibility }),
-  createInvitation: (workspaceId: string, email?: string, boardId?: string) =>
-    api.post(`/workspaces/${workspaceId}/invitations`, { email, board_id: boardId }),
   members: (workspaceId: string) =>
     api.get<WorkspaceMember[]>(`/workspaces/${workspaceId}/members`),
+  updateMember: (workspaceId: string, memberId: string, role: "admin" | "member") =>
+    api.patch<WorkspaceMember>(`/workspaces/${workspaceId}/members/${memberId}`, { role }),
+  removeMember: (workspaceId: string, memberId: string) =>
+    api.delete(`/workspaces/${workspaceId}/members/${memberId}`),
+  createInvitation: (workspaceId: string, email?: string, boardId?: string) =>
+    api.post<Invitation>(`/workspaces/${workspaceId}/invitations`, { email, board_id: boardId }),
+  listInvitations: (workspaceId: string) =>
+    api.get<Invitation[]>(`/workspaces/${workspaceId}/invitations`),
+  revokeInvitation: (workspaceId: string, invitationId: string) =>
+    api.delete(`/workspaces/${workspaceId}/invitations/${invitationId}`),
 };
 
 export const boardApi = {

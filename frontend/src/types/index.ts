@@ -18,8 +18,18 @@ export interface Workspace {
 export interface WorkspaceMember {
   id: string;
   user_id: string;
-  role: string;
+  role: "owner" | "admin" | "member";
   user: User;
+}
+
+export interface Invitation {
+  id: string;
+  token: string;
+  workspace_id: string;
+  email: string | null;
+  board_id: string | null;
+  expires_at: string;
+  invite_url: string;
 }
 
 export interface Board {

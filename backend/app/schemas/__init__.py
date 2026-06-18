@@ -75,6 +75,10 @@ class WorkspaceMemberRead(BaseModel):
     user: UserRead
 
 
+class WorkspaceMemberUpdate(BaseModel):
+    role: WorkspaceRole
+
+
 class BoardCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     visibility: BoardVisibility = BoardVisibility.TEAM

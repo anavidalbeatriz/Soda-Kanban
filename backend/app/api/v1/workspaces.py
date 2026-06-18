@@ -8,8 +8,8 @@ from sqlalchemy.orm import selectinload
 from app.auth.dependencies import get_current_user
 from app.db.models import User, Workspace, WorkspaceMember, WorkspaceRole
 from app.db.session import get_db
-from app.schemas import WorkspaceCreate, WorkspaceMemberRead, WorkspaceRead
-from app.services.permissions import require_workspace_member
+from app.schemas import WorkspaceCreate, WorkspaceMemberRead, WorkspaceMemberUpdate, WorkspaceRead
+from app.services.permissions import require_workspace_admin, require_workspace_member
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 
@@ -76,3 +76,59 @@ async def list_members(
         .where(WorkspaceMember.workspace_id == workspace_id)
     )
     return list(result.scalars().all())
+
+
+@router.patch("/{workspace_id}/members/{member_id}", response_model=WorkspaceMemberRead)
+async def update_member(
+    workspace_id: uuid.UUID,
+    member_id: uuid.UUID,
+    payload: WorkspaceMemberUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> WorkspaceMember:
+    await require_workspace_admin(db, workspace_id, user)
+    if payload.role == WorkspaceRole.OWNER:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot assign owner role",
+        )
+    result = await db.execute(
+        select(WorkspaceMember)
+        .options(selectinload(WorkspaceMember.user))
+        .where(WorkspaceMember.id == member_id, WorkspaceMember.workspace_id == workspace_id)
+    )
+    member = result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+    if member.role == WorkspaceRole.OWNER:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot change owner role",
+        )
+    member.role = payload.role
+    return member
+
+
+@router.delete("/{workspace_id}/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_member(
+    workspace_id: uuid.UUID,
+    member_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    await require_workspace_admin(db, workspace_id, user)
+    result = await db.execute(
+        select(WorkspaceMember).where(
+            WorkspaceMember.id == member_id,
+            WorkspaceMember.workspace_id == workspace_id,
+        )
+    )
+    member = result.scalar_one_or_none()
+    if not member:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+    if member.role == WorkspaceRole.OWNER:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot remove workspace owner",
+        )
+    await db.delete(member)
