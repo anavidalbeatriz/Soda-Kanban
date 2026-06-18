@@ -90,11 +90,16 @@ export function RegisterPage() {
       const { data } = await authApi.register({ name, email, password, invite_token: inviteToken });
       setAuth(data.user, data.access_token, data.refresh_token);
       navigate(workspaceHomePath(data.user));
-    } catch {
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 409) {
+        setError("This email is already registered. Sign in instead.");
+        return;
+      }
       setError(
         inviteToken
           ? "Registration failed. The invite may be invalid or your email is already registered."
-          : "Registration failed. Email may already be in use.",
+          : "Registration failed. Please try again.",
       );
     }
   };
