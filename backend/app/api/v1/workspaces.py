@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.auth.dependencies import get_current_user
-from app.db.models import User, Workspace, WorkspaceMember
+from app.db.models import User, Workspace, WorkspaceMember, WorkspaceRole
 from app.db.session import get_db
 from app.schemas import WorkspaceCreate, WorkspaceMemberRead, WorkspaceRead
 from app.services.permissions import require_workspace_member
@@ -19,12 +19,11 @@ async def list_workspaces(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[Workspace]:
-    result = await db.execute(
-        select(Workspace)
-        .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
-        .where(WorkspaceMember.user_id == user.id)
-    )
-    return list(result.scalars().unique().all())
+    if not user.workspace_id:
+        return []
+    result = await db.execute(select(Workspace).where(Workspace.id == user.workspace_id))
+    workspace = result.scalar_one_or_none()
+    return [workspace] if workspace else []
 
 
 @router.post("", response_model=WorkspaceRead, status_code=status.HTTP_201_CREATED)
@@ -33,11 +32,16 @@ async def create_workspace(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Workspace:
-    from app.db.models import WorkspaceRole
+    if user.workspace_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User already belongs to a workspace",
+        )
 
     workspace = Workspace(name=payload.name, owner_id=user.id)
     db.add(workspace)
     await db.flush()
+    user.workspace_id = workspace.id
     db.add(
         WorkspaceMember(
             workspace_id=workspace.id,

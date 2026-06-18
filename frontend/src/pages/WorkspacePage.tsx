@@ -38,7 +38,6 @@ export function WorkspacePage() {
   return (
     <div className="min-h-screen bg-gray-950">
       <AppHeader
-        backTo={{ label: "Back to workspaces", href: "/" }}
         title="Boards"
         actions={
           <>

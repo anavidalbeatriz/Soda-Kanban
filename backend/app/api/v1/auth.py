@@ -37,12 +37,19 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
         workspace = Workspace(name=f"{payload.name}'s Workspace", owner_id=user.id)
         db.add(workspace)
         await db.flush()
+        user.workspace_id = workspace.id
         db.add(
             WorkspaceMember(
                 workspace_id=workspace.id,
                 user_id=user.id,
                 role=WorkspaceRole.OWNER,
             )
+        )
+
+    if not user.workspace_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Registration requires a workspace invitation",
         )
 
     access_token = create_access_token(user.id)

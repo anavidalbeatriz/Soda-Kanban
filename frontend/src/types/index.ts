@@ -4,6 +4,7 @@ export interface User {
   name: string;
   phone: string | null;
   avatar_url: string | null;
+  workspace_id: string | null;
   created_at: string;
 }
 

@@ -18,6 +18,10 @@ from app.db.models import (
 )
 
 
+def user_belongs_to_workspace(user: User, workspace_id: uuid.UUID) -> bool:
+    return user.workspace_id == workspace_id
+
+
 async def get_workspace_member(
     db: AsyncSession, workspace_id: uuid.UUID, user_id: uuid.UUID
 ) -> WorkspaceMember | None:
@@ -33,6 +37,10 @@ async def get_workspace_member(
 async def require_workspace_member(
     db: AsyncSession, workspace_id: uuid.UUID, user: User
 ) -> WorkspaceMember:
+    if not user.workspace_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No workspace assigned")
+    if not user_belongs_to_workspace(user, workspace_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a workspace member")
     member = await get_workspace_member(db, workspace_id, user.id)
     if not member:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a workspace member")
@@ -66,6 +74,8 @@ async def get_board_member(
 
 
 async def can_view_board(db: AsyncSession, board: Board, user: User) -> bool:
+    if not user.workspace_id or user.workspace_id != board.workspace_id:
+        return False
     if board.visibility == BoardVisibility.PUBLIC:
         return True
     if board.visibility == BoardVisibility.TEAM:

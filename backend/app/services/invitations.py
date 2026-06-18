@@ -56,6 +56,11 @@ async def redeem_invitation(db: AsyncSession, token: str, user: User) -> Invitat
     if not invitation or invitation.accepted_at or invitation.expires_at < datetime.now(UTC):
         return None
 
+    if user.workspace_id and user.workspace_id != invitation.workspace_id:
+        return None
+
+    user.workspace_id = invitation.workspace_id
+
     existing = await db.execute(
         select(WorkspaceMember).where(
             WorkspaceMember.workspace_id == invitation.workspace_id,

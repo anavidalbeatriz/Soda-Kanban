@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { authApi } from "../api/client";
 import { useAuthStore } from "../store/auth";
 import { btnPrimary, inputClass, labelClass } from "../components/ui/styles";
+import { workspaceHomePath } from "../utils/workspace";
 
 function AuthFormShell({ children }: { children: React.ReactNode }) {
   return (
@@ -27,7 +28,7 @@ export function LoginPage() {
     try {
       const { data } = await authApi.login({ email, password });
       setAuth(data.user, data.access_token, data.refresh_token);
-      navigate("/");
+      navigate(workspaceHomePath(data.user));
     } catch {
       setError("Invalid email or password");
     }
@@ -88,9 +89,13 @@ export function RegisterPage() {
     try {
       const { data } = await authApi.register({ name, email, password, invite_token: inviteToken });
       setAuth(data.user, data.access_token, data.refresh_token);
-      navigate("/");
+      navigate(workspaceHomePath(data.user));
     } catch {
-      setError("Registration failed. Email may already be in use.");
+      setError(
+        inviteToken
+          ? "Registration failed. The invite may be invalid or your email is already registered."
+          : "Registration failed. Email may already be in use.",
+      );
     }
   };
 

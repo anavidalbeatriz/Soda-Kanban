@@ -14,6 +14,7 @@ class UserRead(BaseModel):
     name: str
     phone: str | None = None
     avatar_url: str | None = None
+    workspace_id: uuid.UUID | None = None
     created_at: datetime
 
 
