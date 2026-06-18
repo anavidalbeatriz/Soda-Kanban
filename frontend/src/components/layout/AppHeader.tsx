@@ -16,7 +16,7 @@ export function AppHeader({ backTo, title, actions }: AppHeaderProps) {
     <header className="border-b border-gray-800 px-4 md:px-6 py-4">
       <div className="flex items-center justify-between gap-4">
         <Link to="/" className="text-xl font-bold text-white hover:text-gray-200 transition-colors shrink-0">
-          KIS-TRELLO
+          SODA KANBA
         </Link>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-400 hidden sm:inline">{user?.name}</span>

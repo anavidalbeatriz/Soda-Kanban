@@ -1,8 +1,8 @@
 [project]
-name = "kis-trello-api"
+name = "soda-kanba-api"
 version = "0.1.0"
-description = "KIS-TRELLO FastAPI backend"
-authors = [{ name = "KIS-TRELLO" }]
+description = "SODA KANBA FastAPI backend"
+authors = [{ name = "SODA KANBA" }]
 requires-python = ">=3.11"
 dependencies = [
     "fastapi (>=0.137.2,<0.138.0)",
@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.scripts]
-kis-trello-api = "app.main:run"
+soda-kanba-api = "app.main:run"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

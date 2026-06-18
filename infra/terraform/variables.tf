@@ -1,6 +1,6 @@
 variable "project_name" {
   type    = string
-  default = "kis-trello"
+  default = "soda-kanba"
 }
 
 variable "environment" {
@@ -20,12 +20,12 @@ variable "vpc_cidr" {
 
 variable "database_name" {
   type    = string
-  default = "kis_trello"
+  default = "soda_kanba"
 }
 
 variable "database_username" {
   type    = string
-  default = "kis_trello"
+  default = "soda_kanba"
 }
 
 variable "database_password" {
@@ -45,7 +45,7 @@ variable "ses_from_email" {
 
 variable "frontend_url" {
   type    = string
-  default = "https://app.kis-trello.example.com"
+  default = "https://app.soda-kanba.example.com"
 }
 
 variable "ses_domain" {
@@ -55,5 +55,5 @@ variable "ses_domain" {
 
 variable "ecr_image" {
   type    = string
-  default = "kis-trello-api:latest"
+  default = "soda-kanba-api:latest"
 }

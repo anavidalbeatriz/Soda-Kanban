@@ -10,7 +10,7 @@ terraform {
 
   # Uncomment and configure for remote state:
   # backend "s3" {
-  #   bucket = "kis-trello-terraform-state"
+  #   bucket = "soda-kanba-terraform-state"
   #   key    = "prod/terraform.tfstate"
   #   region = "us-east-1"
   # }
@@ -21,7 +21,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "kis-trello"
+      Project     = "soda-kanba"
       Environment = var.environment
       ManagedBy   = "terraform"
     }

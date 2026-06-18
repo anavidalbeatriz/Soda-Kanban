@@ -1,6 +1,6 @@
-# KIS-TRELLO
+# SODA KANBA
 
-A Trello-style Kanban application with workspaces, real-time board sync, email notifications, and AWS deployment.
+A Kanban application with workspaces, real-time board sync, email notifications, and AWS deployment.
 
 ## Stack
 
@@ -71,7 +71,7 @@ docker compose up --build
 ## Project structure
 
 ```
-KIS-TRELLO/
+SODA-KANBA/
 ├── backend/          # FastAPI API (Poetry)
 ├── frontend/         # React SPA (Vite)
 ├── infra/            # docker-compose + Terraform

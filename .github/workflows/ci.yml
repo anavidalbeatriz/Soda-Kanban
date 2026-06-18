@@ -8,7 +8,7 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: kis-trello-api
+  ECR_REPOSITORY: soda-kanba-api
 
 jobs:
   backend-test:
@@ -91,8 +91,8 @@ jobs:
       - name: Deploy ECS service
         run: |
           aws ecs update-service \
-            --cluster kis-trello-prod \
-            --service kis-trello-prod-api \
+            --cluster soda-kanba-prod \
+            --service soda-kanba-prod-api \
             --force-new-deployment
 
       - name: Build frontend
