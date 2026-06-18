@@ -8,7 +8,12 @@ on:
 
 env:
   AWS_REGION: us-east-1
+  PROJECT_NAME: soda-kanba
+  ENVIRONMENT: prod
   ECR_REPOSITORY: soda-kanba-api
+  ECS_CLUSTER: soda-kanba-prod
+  ECS_SERVICE: soda-kanba-prod-api
+  ECS_TASK_DEFINITION: soda-kanba-prod-api
 
 jobs:
   backend-test:
@@ -26,7 +31,7 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
-          version: 2.1.1
+          version: 2.4.1
 
       - name: Install dependencies
         run: poetry install
@@ -88,11 +93,44 @@ jobs:
           docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
+      - name: Run database migrations
+        run: |
+          NETWORK=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration' \
+            --output json)
+
+          SUBNETS=$(echo "$NETWORK" | jq -r '.subnets | join(",")')
+          SECURITY_GROUPS=$(echo "$NETWORK" | jq -r '.securityGroups | join(",")')
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "$ECS_CLUSTER" \
+            --task-definition "$ECS_TASK_DEFINITION" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SECURITY_GROUPS],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"api","command":["alembic","upgrade","head"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          aws ecs wait tasks-stopped --cluster "$ECS_CLUSTER" --tasks "$TASK_ARN"
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster "$ECS_CLUSTER" \
+            --tasks "$TASK_ARN" \
+            --query 'tasks[0].containers[0].exitCode' \
+            --output text)
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migration failed with exit code $EXIT_CODE"
+            exit 1
+          fi
+
       - name: Deploy ECS service
         run: |
           aws ecs update-service \
-            --cluster soda-kanba-prod \
-            --service soda-kanba-prod-api \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
             --force-new-deployment
 
       - name: Build frontend

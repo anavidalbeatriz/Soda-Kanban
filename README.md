@@ -10,7 +10,7 @@ A Kanban application with workspaces, real-time board sync, email notifications,
 | Backend | Python 3.11, FastAPI, SQLAlchemy, Alembic, Poetry |
 | Database | PostgreSQL 16 |
 | Cache / pub-sub | Redis 7 |
-| Cloud | AWS (RDS, ECS Fargate, S3, CloudFront, ElastiCache, SES) |
+| Cloud | AWS (RDS, ECS Fargate, S3, CloudFront, ElastiCache, SES, ECR) |
 
 ## Features
 
@@ -89,18 +89,45 @@ SODA-KANBA/
 
 ## AWS deployment
 
-Terraform modules live in `infra/terraform/`. Configure variables and apply:
+Full instructions: [`infra/terraform/README.md`](infra/terraform/README.md)
+
+### Quick summary
+
+1. **Bootstrap** remote Terraform state (`infra/terraform/bootstrap/`)
+2. **Apply** Terraform with secrets and optional `github_repository`
+3. **Push** the first Docker image to ECR
+4. **Re-apply** with `frontend_url` set to the CloudFront URL (unless using a custom domain)
+5. **Configure** GitHub secrets from `terraform output`
+6. **Request** SES production access for outbound email
 
 ```bash
 cd infra/terraform
+cp terraform.tfvars.example terraform.tfvars  # edit as needed
 terraform init
-terraform plan -var="database_password=..." -var="jwt_secret=..."
-terraform apply
+terraform apply \
+  -var="database_password=..." \
+  -var="jwt_secret=..." \
+  -var="github_repository=your-org/soda-kanba"
 ```
 
-GitHub Actions (`.github/workflows/ci.yml`) runs tests on PRs and deploys to ECS + S3/CloudFront on push to `main`.
+GitHub Actions (`.github/workflows/ci.yml`) runs tests on PRs and on push to `main`:
 
-Required secrets: `AWS_DEPLOY_ROLE_ARN`, `FRONTEND_S3_BUCKET`, `CLOUDFRONT_DISTRIBUTION_ID`
+- Builds and pushes the API image to ECR
+- Runs Alembic migrations via ECS run-task
+- Deploys ECS service
+- Syncs frontend to S3 and invalidates CloudFront
+
+### GitHub secrets
+
+| Secret | Terraform output |
+|--------|------------------|
+| `AWS_DEPLOY_ROLE_ARN` | `deploy_role_arn` |
+| `FRONTEND_S3_BUCKET` | `frontend_s3_bucket` |
+| `CLOUDFRONT_DISTRIBUTION_ID` | `cloudfront_distribution_id` |
+
+### Optional: custom domain
+
+Set `domain_name` and `route53_zone_id` in Terraform to provision ACM, CloudFront alias, and Route 53 records automatically.
 
 ## Testing
 

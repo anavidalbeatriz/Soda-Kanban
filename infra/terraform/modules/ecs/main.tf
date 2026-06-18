@@ -1,23 +1,3 @@
-resource "aws_security_group" "ecs" {
-  name        = "${var.project_name}-${var.environment}-ecs"
-  description = "ECS tasks security group"
-  vpc_id      = var.vpc_id
-
-  ingress {
-    from_port       = 8000
-    to_port         = 8000
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
 resource "aws_lb" "main" {
   name               = "${var.project_name}-${var.environment}-alb"
   internal           = false
@@ -128,11 +108,6 @@ resource "aws_iam_role_policy" "ecs_task" {
         Action   = ["ses:SendEmail", "ses:SendRawEmail"]
         Resource = "*"
       },
-      {
-        Effect   = "Allow"
-        Action   = ["secretsmanager:GetSecretValue"]
-        Resource = var.jwt_secret_arn
-      }
     ]
   })
 }
@@ -140,6 +115,27 @@ resource "aws_iam_role_policy" "ecs_task" {
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/ecs/${var.project_name}-${var.environment}-api"
   retention_in_days = 14
+}
+
+locals {
+  container_environment = [
+    { name = "REDIS_URL", value = var.redis_url },
+    { name = "S3_BUCKET", value = var.s3_bucket },
+    { name = "SES_FROM_EMAIL", value = var.ses_from_email },
+    { name = "FRONTEND_URL", value = var.frontend_url },
+    { name = "CORS_ORIGINS", value = jsonencode([var.frontend_url]) }
+  ]
+
+  container_secrets = [
+    {
+      name      = "JWT_SECRET"
+      valueFrom = var.jwt_secret_arn
+    },
+    {
+      name      = "DATABASE_URL"
+      valueFrom = var.database_secret_arn
+    }
+  ]
 }
 
 resource "aws_ecs_task_definition" "api" {
@@ -155,18 +151,8 @@ resource "aws_ecs_task_definition" "api" {
     name  = "api"
     image = var.ecr_image
     portMappings = [{ containerPort = 8000, protocol = "tcp" }]
-    environment = [
-      { name = "DATABASE_URL", value = var.database_url },
-      { name = "REDIS_URL", value = var.redis_url },
-      { name = "S3_BUCKET", value = var.s3_bucket },
-      { name = "SES_FROM_EMAIL", value = var.ses_from_email },
-      { name = "FRONTEND_URL", value = var.frontend_url },
-      { name = "CORS_ORIGINS", value = jsonencode([var.frontend_url]) }
-    ]
-    secrets = [{
-      name      = "JWT_SECRET"
-      valueFrom = var.jwt_secret_arn
-    }]
+    environment = local.container_environment
+    secrets     = local.container_secrets
     logConfiguration = {
       logDriver = "awslogs"
       options = {
@@ -204,4 +190,28 @@ resource "aws_ecs_service" "api" {
 
 output "alb_dns_name" {
   value = aws_lb.main.dns_name
+}
+
+output "alb_security_group_id" {
+  value = aws_security_group.alb.id
+}
+
+output "cluster_name" {
+  value = aws_ecs_cluster.main.name
+}
+
+output "service_name" {
+  value = aws_ecs_service.api.name
+}
+
+output "task_definition_family" {
+  value = aws_ecs_task_definition.api.family
+}
+
+output "task_execution_role_arn" {
+  value = aws_iam_role.ecs_task_execution.arn
+}
+
+output "task_role_arn" {
+  value = aws_iam_role.ecs_task.arn
 }

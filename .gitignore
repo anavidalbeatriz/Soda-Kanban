@@ -22,3 +22,4 @@ backend/uploads/
 .terraform/
 *.tfstate
 *.tfstate.*
+terraform.tfvars

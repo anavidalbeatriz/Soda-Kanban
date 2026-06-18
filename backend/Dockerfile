@@ -1,6 +1,6 @@
 FROM python:3.11-slim AS builder
 
-ENV POETRY_VERSION=2.1.1 \
+ENV POETRY_VERSION=2.4.1 \
     POETRY_VIRTUALENVS_CREATE=false \
     POETRY_NO_INTERACTION=1
 
@@ -24,5 +24,7 @@ COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /app /app
 
+RUN chmod +x /app/scripts/docker-entrypoint.sh
+
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]

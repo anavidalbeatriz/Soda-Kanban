@@ -8,11 +8,13 @@ terraform {
     }
   }
 
-  # Uncomment and configure for remote state:
+  # Uncomment after running bootstrap (infra/terraform/bootstrap):
   # backend "s3" {
-  #   bucket = "soda-kanba-terraform-state"
-  #   key    = "prod/terraform.tfstate"
-  #   region = "us-east-1"
+  #   bucket         = "soda-kanba-terraform-state"
+  #   key            = "prod/terraform.tfstate"
+  #   region         = "us-east-1"
+  #   dynamodb_table = "soda-kanba-terraform-locks"
+  #   encrypt        = true
   # }
 }
 
@@ -32,6 +34,11 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
+locals {
+  ecr_image = "${module.ecr.repository_url}:latest"
+  app_url   = var.domain_name != "" && var.route53_zone_id != "" ? "https://${var.domain_name}" : var.frontend_url
+}
+
 module "vpc" {
   source = "./modules/vpc"
 
@@ -41,24 +48,11 @@ module "vpc" {
   availability_zones = slice(data.aws_availability_zones.available.names, 0, 2)
 }
 
-resource "aws_security_group" "ecs_tasks" {
-  name        = "${var.project_name}-${var.environment}-ecs-tasks"
-  description = "ECS tasks security group"
-  vpc_id      = module.vpc.vpc_id
+module "ecr" {
+  source = "./modules/ecr"
 
-  ingress {
-    from_port   = 8000
-    to_port     = 8000
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/8"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  project_name = var.project_name
+  environment  = var.environment
 }
 
 module "s3" {
@@ -91,6 +85,19 @@ module "redis" {
   ecs_security_group_id = aws_security_group.ecs_tasks.id
 }
 
+resource "aws_security_group" "ecs_tasks" {
+  name        = "${var.project_name}-${var.environment}-ecs-tasks"
+  description = "ECS tasks security group"
+  vpc_id      = module.vpc.vpc_id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 resource "aws_secretsmanager_secret" "jwt_secret" {
   name = "${var.project_name}-${var.environment}-jwt-secret"
 }
@@ -98,6 +105,15 @@ resource "aws_secretsmanager_secret" "jwt_secret" {
 resource "aws_secretsmanager_secret_version" "jwt_secret" {
   secret_id     = aws_secretsmanager_secret.jwt_secret.id
   secret_string = var.jwt_secret
+}
+
+resource "aws_secretsmanager_secret" "database_url" {
+  name = "${var.project_name}-${var.environment}-database-url"
+}
+
+resource "aws_secretsmanager_secret_version" "database_url" {
+  secret_id     = aws_secretsmanager_secret.database_url.id
+  secret_string = module.rds.database_url
 }
 
 module "ecs" {
@@ -110,13 +126,30 @@ module "ecs" {
   private_subnet_ids     = module.vpc.private_subnet_ids
   ecs_security_group_id  = aws_security_group.ecs_tasks.id
   database_url           = module.rds.database_url
+  database_secret_arn    = aws_secretsmanager_secret.database_url.arn
   redis_url              = module.redis.redis_url
   jwt_secret_arn         = aws_secretsmanager_secret.jwt_secret.arn
   s3_bucket              = module.s3.attachments_bucket_name
   ses_from_email         = var.ses_from_email
-  frontend_url           = var.frontend_url
-  ecr_image              = var.ecr_image
+  frontend_url           = local.app_url
+  ecr_image              = local.ecr_image
   attachments_bucket_arn = module.s3.attachments_bucket_arn
+}
+
+resource "aws_security_group_rule" "ecs_from_alb" {
+  type                     = "ingress"
+  from_port                = 8000
+  to_port                  = 8000
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.ecs_tasks.id
+  source_security_group_id = module.ecs.alb_security_group_id
+}
+
+module "acm" {
+  source = "./modules/acm"
+
+  domain_name     = var.domain_name
+  route53_zone_id = var.route53_zone_id
 }
 
 module "cloudfront" {
@@ -127,11 +160,61 @@ module "cloudfront" {
   frontend_bucket     = module.s3.frontend_bucket_name
   frontend_bucket_arn = module.s3.frontend_bucket_arn
   api_alb_dns_name    = module.ecs.alb_dns_name
+  domain_name         = var.domain_name != "" && var.route53_zone_id != "" ? var.domain_name : ""
+  acm_certificate_arn = module.acm.certificate_arn
+
+  depends_on = [module.acm]
+}
+
+resource "aws_route53_record" "app" {
+  count = var.route53_zone_id != "" && var.domain_name != "" ? 1 : 0
+
+  zone_id = var.route53_zone_id
+  name    = var.domain_name
+  type    = "A"
+
+  alias {
+    name                   = module.cloudfront.distribution_domain_name
+    zone_id                = "Z2FDTNDATAQYW2"
+    evaluate_target_health = false
+  }
+}
+
+resource "aws_route53_record" "app_ipv6" {
+  count = var.route53_zone_id != "" && var.domain_name != "" ? 1 : 0
+
+  zone_id = var.route53_zone_id
+  name    = var.domain_name
+  type    = "AAAA"
+
+  alias {
+    name                   = module.cloudfront.distribution_domain_name
+    zone_id                = "Z2FDTNDATAQYW2"
+    evaluate_target_health = false
+  }
 }
 
 module "ses" {
   source = "./modules/ses"
-  domain = var.ses_domain
+
+  domain          = var.ses_domain
+  route53_zone_id = var.route53_zone_id
+}
+
+module "github_oidc" {
+  count  = var.github_repository != "" ? 1 : 0
+  source = "./modules/github_oidc"
+
+  project_name                = var.project_name
+  environment                 = var.environment
+  github_repository           = var.github_repository
+  allowed_branches            = var.github_allowed_branches
+  create_oidc_provider        = var.create_github_oidc_provider
+  ecr_repository_arn          = module.ecr.repository_arn
+  ecs_task_execution_role_arn = module.ecs.task_execution_role_arn
+  ecs_task_role_arn           = module.ecs.task_role_arn
+  frontend_bucket_arn         = module.s3.frontend_bucket_arn
+  cloudfront_distribution_arn = module.cloudfront.distribution_arn
 }
 
 output "api_url" {
@@ -144,6 +227,34 @@ output "frontend_url" {
 
 output "attachments_bucket" {
   value = module.s3.attachments_bucket_name
+}
+
+output "frontend_s3_bucket" {
+  value = module.s3.frontend_bucket_name
+}
+
+output "cloudfront_distribution_id" {
+  value = module.cloudfront.distribution_id
+}
+
+output "ecr_repository_url" {
+  value = module.ecr.repository_url
+}
+
+output "ecs_cluster_name" {
+  value = module.ecs.cluster_name
+}
+
+output "ecs_service_name" {
+  value = module.ecs.service_name
+}
+
+output "ecs_task_definition_family" {
+  value = module.ecs.task_definition_family
+}
+
+output "deploy_role_arn" {
+  value = var.github_repository != "" ? module.github_oidc[0].deploy_role_arn : null
 }
 
 output "ses_dkim_tokens" {

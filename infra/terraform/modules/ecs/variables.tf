@@ -10,6 +10,11 @@ variable "database_url" {
   sensitive = true
 }
 
+variable "database_secret_arn" {
+  type    = string
+  default = ""
+}
+
 variable "redis_url" { type = string }
 variable "jwt_secret_arn" { type = string }
 variable "s3_bucket" { type = string }

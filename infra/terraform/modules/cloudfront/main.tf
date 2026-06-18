@@ -8,6 +8,7 @@ resource "aws_cloudfront_origin_access_control" "frontend" {
 resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   default_root_object = "index.html"
+  aliases             = var.domain_name != "" ? [var.domain_name] : []
 
   origin {
     domain_name              = "${var.frontend_bucket}.s3.amazonaws.com"
@@ -23,7 +24,7 @@ resource "aws_cloudfront_distribution" "frontend" {
       http_port              = 80
       https_port             = 443
       origin_protocol_policy = "http-only"
-      origin_ssl_protocols     = ["TLSv1.2"]
+      origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
 
@@ -77,11 +78,58 @@ resource "aws_cloudfront_distribution" "frontend" {
     geo_restriction { restriction_type = "none" }
   }
 
-  viewer_certificate {
-    cloudfront_default_certificate = true
+  dynamic "viewer_certificate" {
+    for_each = var.acm_certificate_arn != "" ? [1] : []
+    content {
+      acm_certificate_arn      = var.acm_certificate_arn
+      ssl_support_method       = "sni-only"
+      minimum_protocol_version = "TLSv1.2_2021"
+    }
+  }
+
+  dynamic "viewer_certificate" {
+    for_each = var.acm_certificate_arn == "" ? [1] : []
+    content {
+      cloudfront_default_certificate = true
+    }
   }
 }
 
+data "aws_iam_policy_document" "frontend_bucket" {
+  statement {
+    sid    = "AllowCloudFrontServicePrincipal"
+    effect = "Allow"
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+    actions   = ["s3:GetObject"]
+    resources = ["${var.frontend_bucket_arn}/*"]
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = [aws_cloudfront_distribution.frontend.arn]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "frontend" {
+  bucket = var.frontend_bucket
+  policy = data.aws_iam_policy_document.frontend_bucket.json
+}
+
 output "cloudfront_url" {
-  value = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+  value = var.domain_name != "" ? "https://${var.domain_name}" : "https://${aws_cloudfront_distribution.frontend.domain_name}"
+}
+
+output "distribution_id" {
+  value = aws_cloudfront_distribution.frontend.id
+}
+
+output "distribution_arn" {
+  value = aws_cloudfront_distribution.frontend.arn
+}
+
+output "distribution_domain_name" {
+  value = aws_cloudfront_distribution.frontend.domain_name
 }
