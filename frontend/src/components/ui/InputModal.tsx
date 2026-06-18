@@ -21,7 +21,7 @@ export function InputModal({
   label,
   placeholder,
   type = "text",
-  submitLabel = "Confirmar",
+  submitLabel = "Confirm",
   onSubmit,
   isSubmitting,
 }: InputModalProps) {
@@ -54,10 +54,10 @@ export function InputModal({
         </div>
         <div className="flex justify-end gap-3 pt-2">
           <button type="button" onClick={onClose} className={btnSecondary}>
-            Cancelar
+            Cancel
           </button>
           <button type="submit" disabled={!value.trim() || isSubmitting} className={btnPrimary}>
-            {isSubmitting ? "Salvando..." : submitLabel}
+            {isSubmitting ? "Saving..." : submitLabel}
           </button>
         </div>
       </form>

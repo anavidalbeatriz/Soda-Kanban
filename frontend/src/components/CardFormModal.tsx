@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { BoardList } from "../types";
 import { Modal } from "./ui/Modal";
+import { DatePicker } from "./ui/DatePicker";
 import { btnPrimary, btnSecondary, inputClass, labelClass } from "./ui/styles";
 
 export interface CardFormData {
@@ -90,12 +91,7 @@ export function CardFormModal({
 
         <div>
           <label className={labelClass}>Due date</label>
-          <input
-            type="date"
-            className={inputClass}
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-          />
+          <DatePicker value={dueDate} onChange={setDueDate} />
         </div>
 
         <div className="flex justify-end gap-3 pt-2">

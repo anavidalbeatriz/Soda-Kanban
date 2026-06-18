@@ -18,7 +18,7 @@ function getInitials(name: string): string {
 
 function formatDueDate(dateStr: string): string {
   const date = new Date(dateStr);
-  return date.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+  return date.toLocaleDateString("en-US", { day: "numeric", month: "short" });
 }
 
 export function CardItem({ card, onClick, isDragging }: CardItemProps) {

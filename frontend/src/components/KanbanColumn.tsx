@@ -27,7 +27,7 @@ export function KanbanColumn({ list, cards, onSelectCard, onAddCard }: KanbanCol
         </div>
         <button
           className="rounded p-1 text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors"
-          aria-label="Opções da lista"
+          aria-label="List options"
         >
           <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
             <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Card } from "../types";
 import { boardApi } from "../api/client";
 import { Modal } from "./ui/Modal";
+import { DatePicker } from "./ui/DatePicker";
 import { btnPrimary, inputClass, labelClass } from "./ui/styles";
 
 interface CardDetailModalProps {
@@ -71,12 +72,7 @@ export function CardDetailModal({ card, onClose }: CardDetailModalProps) {
 
           <div>
             <label className={labelClass}>Due date</label>
-            <input
-              type="date"
-              className={inputClass}
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-            />
+            <DatePicker value={dueDate} onChange={setDueDate} />
           </div>
 
           <button
