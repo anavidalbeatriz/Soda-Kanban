@@ -19,11 +19,13 @@ async def list_workspaces(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[Workspace]:
-    if not user.workspace_id:
-        return []
-    result = await db.execute(select(Workspace).where(Workspace.id == user.workspace_id))
-    workspace = result.scalar_one_or_none()
-    return [workspace] if workspace else []
+    result = await db.execute(
+        select(Workspace)
+        .join(WorkspaceMember, WorkspaceMember.workspace_id == Workspace.id)
+        .where(WorkspaceMember.user_id == user.id)
+        .order_by(Workspace.name)
+    )
+    return list(result.scalars().unique().all())
 
 
 @router.post("", response_model=WorkspaceRead, status_code=status.HTTP_201_CREATED)
@@ -32,16 +34,9 @@ async def create_workspace(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Workspace:
-    if user.workspace_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User already belongs to a workspace",
-        )
-
     workspace = Workspace(name=payload.name, owner_id=user.id)
     db.add(workspace)
     await db.flush()
-    user.workspace_id = workspace.id
     db.add(
         WorkspaceMember(
             workspace_id=workspace.id,
@@ -49,6 +44,8 @@ async def create_workspace(
             role=WorkspaceRole.OWNER,
         )
     )
+    if not user.workspace_id:
+        user.workspace_id = workspace.id
     return workspace
 
 

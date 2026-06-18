@@ -56,10 +56,8 @@ async def redeem_invitation(db: AsyncSession, token: str, user: User) -> Invitat
     if not invitation or invitation.accepted_at or invitation.expires_at < datetime.now(UTC):
         return None
 
-    if user.workspace_id and user.workspace_id != invitation.workspace_id:
+    if invitation.accepted_at or invitation.expires_at < datetime.now(UTC):
         return None
-
-    user.workspace_id = invitation.workspace_id
 
     existing = await db.execute(
         select(WorkspaceMember).where(
@@ -67,14 +65,21 @@ async def redeem_invitation(db: AsyncSession, token: str, user: User) -> Invitat
             WorkspaceMember.user_id == user.id,
         )
     )
-    if not existing.scalar_one_or_none():
-        db.add(
-            WorkspaceMember(
-                workspace_id=invitation.workspace_id,
-                user_id=user.id,
-                role=WorkspaceRole.MEMBER,
-            )
+    if existing.scalar_one_or_none():
+        invitation.accepted_at = datetime.now(UTC)
+        await db.flush()
+        return invitation
+
+    if not user.workspace_id:
+        user.workspace_id = invitation.workspace_id
+
+    db.add(
+        WorkspaceMember(
+            workspace_id=invitation.workspace_id,
+            user_id=user.id,
+            role=WorkspaceRole.MEMBER,
         )
+    )
 
     if invitation.board_id:
         board_member = await db.execute(

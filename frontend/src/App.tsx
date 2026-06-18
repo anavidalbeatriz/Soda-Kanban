@@ -1,12 +1,13 @@
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { useAuthStore } from "./store/auth";
 import { LoginPage, RegisterPage } from "./pages/AuthPages";
+import { DashboardPage } from "./pages/DashboardPage";
 import { WorkspacePage } from "./pages/WorkspacePage";
 import { BoardPage } from "./pages/BoardPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ProfileEditPage } from "./pages/ProfileEditPage";
-import { DashboardRedirect, WorkspaceGuard } from "./components/WorkspaceGuard";
+import { WorkspaceGuard } from "./components/WorkspaceGuard";
 
 function ProtectedRoute() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -26,7 +27,7 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
       </Route>
       <Route element={<ProtectedRoute />}>
-        <Route path="/" element={<DashboardRedirect />} />
+        <Route path="/" element={<DashboardPage />} />
         <Route
           path="/workspaces/:workspaceId"
           element={

@@ -1,26 +1,50 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppHeader } from "../components/layout/AppHeader";
 import { PageShell } from "../components/layout/PageShell";
-import { cardClass } from "../components/ui/styles";
+import { InputModal } from "../components/ui/InputModal";
+import { btnPrimary, cardClass } from "../components/ui/styles";
 import { workspaceApi } from "../api/client";
-import { useQuery } from "@tanstack/react-query";
 
 export function DashboardPage() {
+  const queryClient = useQueryClient();
+  const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
+
   const { data: workspaces = [], isLoading } = useQuery({
     queryKey: ["workspaces"],
     queryFn: () => workspaceApi.list().then((r) => r.data),
   });
 
+  const createWorkspace = useMutation({
+    mutationFn: (name: string) => workspaceApi.create(name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+      setWorkspaceModalOpen(false);
+    },
+  });
+
   return (
     <div className="min-h-screen bg-gray-950">
-      <AppHeader />
+      <AppHeader
+        title="Your workspaces"
+        actions={
+          <button onClick={() => setWorkspaceModalOpen(true)} className={btnPrimary}>
+            New workspace
+          </button>
+        }
+      />
 
       <PageShell>
-        <h2 className="text-lg font-semibold text-white mb-4">Your workspaces</h2>
         {isLoading ? (
           <p className="text-gray-500">Loading...</p>
         ) : workspaces.length === 0 ? (
-          <p className="text-gray-500">No workspaces yet.</p>
+          <div className="text-center py-12">
+            <p className="text-gray-500 mb-4">No workspaces yet.</p>
+            <button onClick={() => setWorkspaceModalOpen(true)} className={btnPrimary}>
+              Create your first workspace
+            </button>
+          </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {workspaces.map((ws) => (
@@ -31,6 +55,17 @@ export function DashboardPage() {
           </div>
         )}
       </PageShell>
+
+      <InputModal
+        open={workspaceModalOpen}
+        onClose={() => setWorkspaceModalOpen(false)}
+        title="New workspace"
+        label="Workspace name"
+        placeholder="My workspace"
+        submitLabel="Create workspace"
+        onSubmit={(name) => createWorkspace.mutate(name)}
+        isSubmitting={createWorkspace.isPending}
+      />
     </div>
   );
 }
