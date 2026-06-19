@@ -91,15 +91,18 @@ export function RegisterPage() {
       setAuth(data.user, data.access_token, data.refresh_token);
       navigate(workspaceHomePath(data.user));
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
+      const status = (err as { response?: { status?: number; data?: { detail?: string } } })?.response?.status;
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
       if (status === 409) {
         setError("This email is already registered. Sign in instead.");
         return;
       }
       setError(
-        inviteToken
-          ? "Registration failed. The invite may be invalid or your email is already registered."
-          : "Registration failed. Please try again.",
+        typeof detail === "string" && detail
+          ? detail
+          : inviteToken
+            ? "Registration failed. The invite may be invalid or your email is already registered."
+            : "Registration failed. Please try again.",
       );
     }
   };

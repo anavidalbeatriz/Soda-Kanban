@@ -9,7 +9,7 @@ from app.db.models import User, Workspace, WorkspaceMember, WorkspaceRole
 from app.db.session import get_db
 from app.schemas import LoginRequest, RefreshRequest, RegisterRequest, TokenResponse, UserRead
 from app.services.attachments import ensure_default_notification_preferences
-from app.services.invitations import redeem_invitation
+from app.services.invitations import redeem_invitation, INVITE_ERROR_MESSAGES
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -30,9 +30,10 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
     await ensure_default_notification_preferences(db, user.id)
 
     if payload.invite_token:
-        invitation = await redeem_invitation(db, payload.invite_token, user)
+        invitation, invite_error = await redeem_invitation(db, payload.invite_token, user)
         if not invitation:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invite token")
+            detail = INVITE_ERROR_MESSAGES.get(invite_error or "not_found", "Invalid invite token")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
     else:
         workspace = Workspace(name=f"{payload.name}'s Workspace", owner_id=user.id)
         db.add(workspace)

@@ -10,7 +10,7 @@ from app.config import get_settings
 from app.db.models import Invitation, User
 from app.db.session import get_db
 from app.schemas import InvitationCreate, InvitationRead
-from app.services.invitations import create_invitation, redeem_invitation
+from app.services.invitations import create_invitation, redeem_invitation, INVITE_ERROR_MESSAGES
 from app.services.permissions import require_workspace_admin
 
 router = APIRouter(prefix="/workspaces/{workspace_id}/invitations", tags=["invitations"])
@@ -91,6 +91,7 @@ async def accept_invitation(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    invitation = await redeem_invitation(db, token, user)
+    invitation, invite_error = await redeem_invitation(db, token, user)
     if not invitation:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid invite token")
+        detail = INVITE_ERROR_MESSAGES.get(invite_error or "not_found", "Invalid invite token")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)

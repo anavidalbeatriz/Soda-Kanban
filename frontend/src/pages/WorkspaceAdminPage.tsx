@@ -231,7 +231,7 @@ export function WorkspaceAdminPage() {
                     <div key={inv.id} className={`${cardClass} flex flex-col sm:flex-row sm:items-center gap-3 justify-between`}>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-white truncate">
-                          {inv.email ?? "Link invite (any email)"}
+                          {inv.email ?? "Shared link (multiple users, 7 days)"}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">Expires {formatDate(inv.expires_at)}</p>
                         <p className="text-xs text-gray-600 truncate mt-1">{inv.invite_url}</p>

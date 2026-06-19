@@ -19,6 +19,18 @@ from app.services.attachments import send_email
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+INVITE_ERROR_MESSAGES = {
+    "not_found": "This invite link is invalid. Ask your workspace admin to send a new invitation.",
+    "expired": "This invite link has expired. Ask your workspace admin to send a new invitation.",
+    "already_used": "This invite link has already been used. Sign in or ask for a new invitation.",
+    "email_mismatch": "This invite was sent to a different email address. Register with the invited email or ask for a new invitation.",
+}
+
+
+def _is_shared_link_invite(invitation: Invitation) -> bool:
+    """Link-only invites (no email) can be used by multiple people until expiry."""
+    return invitation.email is None
+
 
 async def create_invitation(
     db: AsyncSession,
@@ -50,14 +62,27 @@ async def create_invitation(
     return invitation
 
 
-async def redeem_invitation(db: AsyncSession, token: str, user: User) -> Invitation | None:
+async def redeem_invitation(db: AsyncSession, token: str, user: User) -> tuple[Invitation | None, str | None]:
+    now = datetime.now(UTC)
     result = await db.execute(select(Invitation).where(Invitation.token == token))
     invitation = result.scalar_one_or_none()
-    if not invitation or invitation.accepted_at or invitation.expires_at < datetime.now(UTC):
-        return None
+    shared_link = invitation is not None and _is_shared_link_invite(invitation)
 
-    if invitation.accepted_at or invitation.expires_at < datetime.now(UTC):
-        return None
+    if not invitation:
+        logger.warning("invite redeem failed: token not found")
+        return None, "not_found"
+
+    if invitation.accepted_at and not shared_link:
+        logger.warning("invite redeem failed: already accepted")
+        return None, "already_used"
+
+    if invitation.expires_at < now:
+        logger.warning("invite redeem failed: expired")
+        return None, "expired"
+
+    if invitation.email and invitation.email.lower() != user.email.lower():
+        logger.warning("invite redeem failed: email mismatch")
+        return None, "email_mismatch"
 
     existing = await db.execute(
         select(WorkspaceMember).where(
@@ -66,9 +91,10 @@ async def redeem_invitation(db: AsyncSession, token: str, user: User) -> Invitat
         )
     )
     if existing.scalar_one_or_none():
-        invitation.accepted_at = datetime.now(UTC)
-        await db.flush()
-        return invitation
+        if not shared_link:
+            invitation.accepted_at = datetime.now(UTC)
+            await db.flush()
+        return invitation, None
 
     if not user.workspace_id:
         user.workspace_id = invitation.workspace_id
@@ -97,6 +123,7 @@ async def redeem_invitation(db: AsyncSession, token: str, user: User) -> Invitat
                 )
             )
 
-    invitation.accepted_at = datetime.now(UTC)
+    if not shared_link:
+        invitation.accepted_at = datetime.now(UTC)
     await db.flush()
-    return invitation
+    return invitation, None
