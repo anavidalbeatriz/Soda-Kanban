@@ -9,7 +9,11 @@ from app.auth.dependencies import get_current_user
 from app.db.models import User, Workspace, WorkspaceMember, WorkspaceRole
 from app.db.session import get_db
 from app.schemas import WorkspaceCreate, WorkspaceMemberRead, WorkspaceMemberUpdate, WorkspaceRead
-from app.services.permissions import require_workspace_admin, require_workspace_member
+from app.services.permissions import (
+    get_workspace as fetch_workspace,
+    require_workspace_admin,
+    require_workspace_member,
+)
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 
@@ -61,6 +65,38 @@ async def get_workspace(
     if not workspace:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
     return workspace
+
+
+@router.delete("/{workspace_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_workspace(
+    workspace_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    member = await require_workspace_member(db, workspace_id, user)
+    if member.role != WorkspaceRole.OWNER:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the workspace owner can delete the workspace",
+        )
+
+    workspace = await fetch_workspace(db, workspace_id)
+    if not workspace:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found")
+
+    users_result = await db.execute(select(User).where(User.workspace_id == workspace_id))
+    for affected_user in users_result.scalars():
+        other_result = await db.execute(
+            select(WorkspaceMember.workspace_id)
+            .where(
+                WorkspaceMember.user_id == affected_user.id,
+                WorkspaceMember.workspace_id != workspace_id,
+            )
+            .limit(1)
+        )
+        affected_user.workspace_id = other_result.scalar_one_or_none()
+
+    await db.delete(workspace)
 
 
 @router.get("/{workspace_id}/members", response_model=list[WorkspaceMemberRead])

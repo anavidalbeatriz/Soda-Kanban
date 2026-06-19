@@ -9,6 +9,9 @@ export const btnPrimary =
 export const btnSecondary =
   "rounded-lg px-4 py-2 text-sm font-medium text-gray-300 hover:bg-gray-800 transition-colors";
 
+export const btnDanger =
+  "rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors";
+
 export const btnGhost =
   "text-sm text-gray-400 hover:text-gray-200 transition-colors";
 

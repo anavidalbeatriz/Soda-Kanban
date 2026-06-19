@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { workspaceApi } from "../api/client";
 import { AppHeader } from "../components/layout/AppHeader";
 import { PageShell } from "../components/layout/PageShell";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { InputModal } from "../components/ui/InputModal";
-import { btnPrimary, btnSecondary, cardClass, inputClass } from "../components/ui/styles";
+import { btnDanger, btnPrimary, btnSecondary, cardClass, inputClass } from "../components/ui/styles";
 import { useAuthStore } from "../store/auth";
 import type { Invitation, WorkspaceMember } from "../types";
 
@@ -51,11 +52,13 @@ function InviteLinkCard({
 
 export function WorkspaceAdminPage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((s) => s.user);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [latestInviteUrl, setLatestInviteUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [deleteWorkspaceOpen, setDeleteWorkspaceOpen] = useState(false);
 
   const { data: members = [], isLoading: membersLoading } = useQuery({
     queryKey: ["workspace-members", workspaceId],
@@ -65,6 +68,7 @@ export function WorkspaceAdminPage() {
 
   const currentMembership = members.find((m) => m.user_id === currentUser?.id);
   const isAdmin = currentMembership ? isAdminRole(currentMembership.role) : false;
+  const isOwner = currentMembership?.role === "owner";
 
   const { data: invitations = [], isLoading: invitationsLoading } = useQuery({
     queryKey: ["workspace-invitations", workspaceId],
@@ -108,6 +112,14 @@ export function WorkspaceAdminPage() {
   const revokeInvitation = useMutation({
     mutationFn: (invitationId: string) => workspaceApi.revokeInvitation(workspaceId!, invitationId),
     onSuccess: invalidate,
+  });
+
+  const deleteWorkspace = useMutation({
+    mutationFn: () => workspaceApi.delete(workspaceId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+      navigate("/");
+    },
   });
 
   const copyLink = async (url: string) => {
@@ -258,9 +270,34 @@ export function WorkspaceAdminPage() {
                 </div>
               )}
             </section>
+
+            {isOwner && (
+              <section className="rounded-xl border border-red-900/50 bg-red-950/20 p-6">
+                <h2 className="text-lg font-semibold text-red-300 mb-2">Danger zone</h2>
+                <p className="text-sm text-gray-400 mb-4">
+                  Permanently delete this workspace, all boards, lists, cards, and invitations. This cannot be undone.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setDeleteWorkspaceOpen(true)}
+                  className={btnDanger}
+                >
+                  Delete workspace
+                </button>
+              </section>
+            )}
           </div>
         )}
       </PageShell>
+
+      <ConfirmModal
+        open={deleteWorkspaceOpen}
+        onClose={() => setDeleteWorkspaceOpen(false)}
+        onConfirm={() => deleteWorkspace.mutate()}
+        title="Delete workspace"
+        message="Delete this workspace and everything in it? This cannot be undone."
+        isSubmitting={deleteWorkspace.isPending}
+      />
 
       <InputModal
         open={emailModalOpen}

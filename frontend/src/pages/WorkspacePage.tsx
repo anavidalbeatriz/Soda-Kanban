@@ -3,16 +3,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { AppHeader } from "../components/layout/AppHeader";
 import { PageShell } from "../components/layout/PageShell";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
 import { InputModal } from "../components/ui/InputModal";
 import { btnPrimary, btnSecondary, cardClass } from "../components/ui/styles";
-import { workspaceApi } from "../api/client";
+import { boardApi, workspaceApi } from "../api/client";
 import { useAuthStore } from "../store/auth";
+import type { Board } from "../types";
 
 export function WorkspacePage() {
   const { workspaceId } = useParams<{ workspaceId: string }>();
   const queryClient = useQueryClient();
   const currentUser = useAuthStore((s) => s.user);
   const [boardModalOpen, setBoardModalOpen] = useState(false);
+  const [boardToDelete, setBoardToDelete] = useState<Board | null>(null);
 
   const { data: boards = [], isLoading } = useQuery({
     queryKey: ["boards", workspaceId],
@@ -35,6 +38,14 @@ export function WorkspacePage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["boards", workspaceId] });
       setBoardModalOpen(false);
+    },
+  });
+
+  const deleteBoard = useMutation({
+    mutationFn: (boardId: string) => boardApi.deleteBoard(boardId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["boards", workspaceId] });
+      setBoardToDelete(null);
     },
   });
 
@@ -65,10 +76,22 @@ export function WorkspacePage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {boards.map((board) => (
-              <Link key={board.id} to={`/boards/${board.id}`} className={cardClass}>
-                <h3 className="font-medium text-white">{board.name}</h3>
-                <p className="text-xs text-gray-500 mt-1 capitalize">{board.visibility}</p>
-              </Link>
+              <div key={board.id} className={`${cardClass} relative group`}>
+                <Link to={`/boards/${board.id}`} className="block">
+                  <h3 className="font-medium text-white pr-8">{board.name}</h3>
+                  <p className="text-xs text-gray-500 mt-1 capitalize">{board.visibility}</p>
+                </Link>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => setBoardToDelete(board)}
+                    className="absolute top-4 right-4 text-xs text-red-400 opacity-0 group-hover:opacity-100 hover:text-red-300 transition-opacity"
+                    aria-label={`Delete ${board.name}`}
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         )}
@@ -83,6 +106,19 @@ export function WorkspacePage() {
         submitLabel="Create board"
         onSubmit={(name) => createBoard.mutate(name)}
         isSubmitting={createBoard.isPending}
+      />
+
+      <ConfirmModal
+        open={!!boardToDelete}
+        onClose={() => setBoardToDelete(null)}
+        onConfirm={() => boardToDelete && deleteBoard.mutate(boardToDelete.id)}
+        title="Delete board"
+        message={
+          boardToDelete
+            ? `Delete "${boardToDelete.name}" and all its lists and cards? This cannot be undone.`
+            : ""
+        }
+        isSubmitting={deleteBoard.isPending}
       />
     </div>
   );

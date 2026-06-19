@@ -81,6 +81,7 @@ export const userApi = {
 export const workspaceApi = {
   list: () => api.get<Workspace[]>("/workspaces"),
   create: (name: string) => api.post<Workspace>("/workspaces", { name }),
+  delete: (workspaceId: string) => api.delete(`/workspaces/${workspaceId}`),
   boards: (workspaceId: string) => api.get<Board[]>(`/workspaces/${workspaceId}/boards`),
   createBoard: (workspaceId: string, name: string, visibility = "team") =>
     api.post<Board>(`/workspaces/${workspaceId}/boards`, { name, visibility }),
@@ -101,6 +102,7 @@ export const workspaceApi = {
 export const boardApi = {
   detail: (boardId: string) => api.get<BoardDetail>(`/boards/${boardId}/detail`),
   update: (boardId: string, payload: Partial<Board>) => api.patch<Board>(`/boards/${boardId}`, payload),
+  deleteBoard: (boardId: string) => api.delete(`/boards/${boardId}`),
   createCard: (listId: string, payload: Partial<Card> & { title: string }) =>
     api.post<Card>(`/lists/${listId}/cards`, payload),
   updateCard: (cardId: string, payload: Partial<Card>) =>

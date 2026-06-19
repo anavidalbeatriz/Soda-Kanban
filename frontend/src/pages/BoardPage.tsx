@@ -1,22 +1,27 @@
 import { useCallback, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { boardApi, workspaceApi } from "../api/client";
 import { KanbanBoard } from "../components/KanbanBoard";
 import { CardDetailModal } from "../components/CardDetailModal";
 import { CardFormModal, type CardFormData } from "../components/CardFormModal";
 import { AppHeader } from "../components/layout/AppHeader";
-import { btnPrimary, inputClass } from "../components/ui/styles";
+import { ConfirmModal } from "../components/ui/ConfirmModal";
+import { btnDanger, btnPrimary, inputClass } from "../components/ui/styles";
 import { useBoardSocket } from "../hooks/useBoardSocket";
+import { useAuthStore } from "../store/auth";
 import type { BoardEvent, Card } from "../types";
 
 export function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const currentUser = useAuthStore((s) => s.user);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [visibility, setVisibility] = useState<string>("");
   const [cardFormOpen, setCardFormOpen] = useState(false);
   const [targetListId, setTargetListId] = useState<string>("");
+  const [deleteBoardOpen, setDeleteBoardOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["board", boardId],
@@ -31,6 +36,10 @@ export function BoardPage() {
   });
 
   const assigneeNames = Object.fromEntries(members.map((m) => [m.user_id, m.user.name]));
+
+  const currentMembership = members.find((m) => m.user_id === currentUser?.id);
+  const isAdmin =
+    currentMembership?.role === "owner" || currentMembership?.role === "admin";
 
   const moveMutation = useMutation({
     mutationFn: ({ cardId, listId, position }: { cardId: string; listId: string; position: number }) =>
@@ -54,6 +63,14 @@ export function BoardPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["board", boardId] });
       setCardFormOpen(false);
+    },
+  });
+
+  const deleteBoard = useMutation({
+    mutationFn: () => boardApi.deleteBoard(boardId!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["boards", data?.board.workspace_id] });
+      navigate(`/workspaces/${data!.board.workspace_id}`);
     },
   });
 
@@ -110,8 +127,22 @@ export function BoardPage() {
             <button onClick={() => openCardForm()} className={btnPrimary}>
               Add card
             </button>
+            {isAdmin && (
+              <button type="button" onClick={() => setDeleteBoardOpen(true)} className={btnDanger}>
+                Delete board
+              </button>
+            )}
           </>
         }
+      />
+
+      <ConfirmModal
+        open={deleteBoardOpen}
+        onClose={() => setDeleteBoardOpen(false)}
+        onConfirm={() => deleteBoard.mutate()}
+        title="Delete board"
+        message={`Delete "${data.board.name}" and all its lists and cards? This cannot be undone.`}
+        isSubmitting={deleteBoard.isPending}
       />
 
       <main className="p-4 md:p-6">

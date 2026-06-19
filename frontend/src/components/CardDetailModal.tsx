@@ -3,8 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Card, WorkspaceMember } from "../types";
 import { boardApi } from "../api/client";
 import { CardFields } from "./CardFields";
+import { ConfirmModal } from "./ui/ConfirmModal";
 import { Modal } from "./ui/Modal";
-import { btnPrimary, inputClass } from "./ui/styles";
+import { btnDanger, btnPrimary, inputClass } from "./ui/styles";
 import {
   hasCardFormErrors,
   validateCardForm,
@@ -25,6 +26,7 @@ export function CardDetailModal({ card, onClose, members }: CardDetailModalProps
   const [assigneeId, setAssigneeId] = useState("");
   const [comment, setComment] = useState("");
   const [errors, setErrors] = useState<CardFormErrors>({});
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (card) {
@@ -63,6 +65,15 @@ export function CardDetailModal({ card, onClose, members }: CardDetailModalProps
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: () => boardApi.deleteCard(card!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["board"] });
+      setDeleteOpen(false);
+      onClose();
+    },
+  });
+
   const handleSave = () => {
     const formErrors = validateCardForm({
       title,
@@ -96,6 +107,23 @@ export function CardDetailModal({ card, onClose, members }: CardDetailModalProps
           >
             {updateMutation.isPending ? "Saving..." : "Save changes"}
           </button>
+
+          <button
+            type="button"
+            onClick={() => setDeleteOpen(true)}
+            className={`w-full ${btnDanger} py-2.5`}
+          >
+            Delete card
+          </button>
+
+          <ConfirmModal
+            open={deleteOpen}
+            onClose={() => setDeleteOpen(false)}
+            onConfirm={() => deleteMutation.mutate()}
+            title="Delete card"
+            message={`Delete "${card.title}"? This cannot be undone.`}
+            isSubmitting={deleteMutation.isPending}
+          />
 
           <div className="border-t border-gray-700 pt-4">
             <h3 className="mb-3 text-sm font-medium text-gray-300">Comments</h3>
