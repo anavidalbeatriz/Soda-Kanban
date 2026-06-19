@@ -1,5 +1,7 @@
 # SODA KANBAN
 
+**Live app:** [https://sodakanban.kfsoda.tech](https://sodakanban.kfsoda.tech)
+
 A Kanban application with workspaces, real-time board sync, email notifications, and AWS deployment.
 
 ## Stack
