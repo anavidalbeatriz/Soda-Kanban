@@ -15,8 +15,8 @@ frontend_url = "https://sodakanban.kfsoda.tech"
 # Optional: use Route 53 instead of HostGator for DNS (auto-manages ACM + alias records)
 # route53_zone_id = "Z1234567890"
 
-# Optional: GitHub OIDC deploy role (org/repo format)
-# github_repository = "your-org/soda-kanba"
+# GitHub OIDC deploy role (org/repo format) — must match the repo running CI
+github_repository = "gabrielvidalsoda/Soda-Kanban"
 
 # Set after first apply if not using a custom domain:
 # frontend_url = "https://d1234abcd.cloudfront.net"
