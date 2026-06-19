@@ -80,6 +80,11 @@ SODA-KANBAN/
 └── .github/workflows # CI/CD
 ```
 
+## Project tracking
+
+- [TODOs](todos.md) — feature backlog with status and priority
+- [Known issues](known_issues.md) — bugs and production limitations
+
 ## API overview
 
 | Area | Prefix |
