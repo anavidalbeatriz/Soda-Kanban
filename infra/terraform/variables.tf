@@ -57,7 +57,7 @@ variable "ses_domain" {
 variable "domain_name" {
   type        = string
   default     = ""
-  description = "Optional custom domain (e.g. app.example.com). Requires route53_zone_id."
+  description = "Optional custom domain (e.g. sodakanban.kfsoda.tech). Works with Route 53 or external DNS (HostGator)."
 }
 
 variable "route53_zone_id" {

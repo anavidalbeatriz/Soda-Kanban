@@ -71,7 +71,7 @@ docker compose up --build
 ## Project structure
 
 ```
-SODA-KANBA/
+SODA-KANBAN/
 ├── backend/          # FastAPI API (Poetry)
 ├── frontend/         # React SPA (Vite)
 ├── infra/            # docker-compose + Terraform

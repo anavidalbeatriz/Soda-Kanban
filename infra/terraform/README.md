@@ -103,6 +103,46 @@ terraform output ses_dkim_tokens
 
 Request **SES production access** in the AWS console before sending to unverified recipients.
 
+## 8. Custom domain (e.g. sodakanban.kfsoda.tech)
+
+Set in `terraform.tfvars`:
+
+```hcl
+domain_name  = "sodakanban.kfsoda.tech"
+frontend_url = "https://sodakanban.kfsoda.tech"
+```
+
+### Step 1 — Request certificate
+
+```bash
+cd infra/terraform
+terraform apply -target=module.acm.aws_acm_certificate.main
+terraform output acm_dns_validation_records
+```
+
+### Step 2 — Add DNS records in HostGator
+
+In **Editor de zona DNS** for `kfsoda.tech`:
+
+1. **ACM validation** — add the CNAME from `acm_dns_validation_records` (Name = subdomain part only, e.g. `_abc123.sodakanban`)
+2. **App CNAME**:
+
+| Type | Name | Target |
+|------|------|--------|
+| CNAME | `sodakanban` | `terraform output -raw cloudfront_domain_name` |
+
+### Step 3 — Finish apply
+
+After DNS propagates (15–60 min):
+
+```bash
+terraform apply
+```
+
+This validates the certificate, attaches the domain to CloudFront, and updates `FRONTEND_URL` on ECS.
+
+Your app will be at **https://sodakanban.kfsoda.tech**.
+
 ## Outputs
 
 ```bash

@@ -36,7 +36,7 @@ export function LoginPage() {
 
   return (
     <AuthFormShell>
-      <h1 className="text-2xl font-bold text-white mb-6">Sign in to SODA KANBA</h1>
+      <h1 className="text-2xl font-bold text-white mb-6">Sign in to SODA KANBAN</h1>
       {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

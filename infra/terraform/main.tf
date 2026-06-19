@@ -36,7 +36,8 @@ data "aws_availability_zones" "available" {
 
 locals {
   ecr_image = "${module.ecr.repository_url}:latest"
-  app_url   = var.domain_name != "" && var.route53_zone_id != "" ? "https://${var.domain_name}" : var.frontend_url
+  use_custom_domain = var.domain_name != "" && module.acm.certificate_arn != ""
+  app_url   = local.use_custom_domain ? "https://${var.domain_name}" : var.frontend_url
 }
 
 module "vpc" {
@@ -160,7 +161,7 @@ module "cloudfront" {
   frontend_bucket     = module.s3.frontend_bucket_name
   frontend_bucket_arn = module.s3.frontend_bucket_arn
   api_alb_dns_name    = module.ecs.alb_dns_name
-  domain_name         = var.domain_name != "" && var.route53_zone_id != "" ? var.domain_name : ""
+  domain_name         = local.use_custom_domain ? var.domain_name : ""
   acm_certificate_arn = module.acm.certificate_arn
 
   depends_on = [module.acm]
@@ -259,4 +260,14 @@ output "deploy_role_arn" {
 
 output "ses_dkim_tokens" {
   value = module.ses.dkim_tokens
+}
+
+output "acm_dns_validation_records" {
+  value       = module.acm.dns_validation_records
+  description = "CNAME records to add in HostGator (or Route 53) before the custom domain works"
+}
+
+output "cloudfront_domain_name" {
+  value       = module.cloudfront.distribution_domain_name
+  description = "Point your custom domain CNAME to this CloudFront hostname"
 }

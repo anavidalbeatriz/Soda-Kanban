@@ -43,7 +43,7 @@ async def create_invitation(
         invite_url = f"{settings.frontend_url}/register?token={token}"
         await send_email(
             email,
-            "You are invited to SODA KANBA",
+            "You are invited to SODA KANBAN",
             f"Join your team: {invite_url}",
         )
 

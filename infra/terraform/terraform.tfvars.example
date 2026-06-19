@@ -8,8 +8,11 @@ environment   = "prod"
 ses_domain     = "kfsoda.tech"
 ses_from_email = "gabriel@kfsoda.tech"
 
-# Optional: custom domain (requires route53_zone_id)
-# domain_name     = "app.example.com"
+# Custom app URL — add sodakanban subdomain in HostGator DNS (see infra/terraform/README.md)
+domain_name  = "sodakanban.kfsoda.tech"
+frontend_url = "https://sodakanban.kfsoda.tech"
+
+# Optional: use Route 53 instead of HostGator for DNS (auto-manages ACM + alias records)
 # route53_zone_id = "Z1234567890"
 
 # Optional: GitHub OIDC deploy role (org/repo format)
@@ -17,6 +20,9 @@ ses_from_email = "gabriel@kfsoda.tech"
 
 # Set after first apply if not using a custom domain:
 # frontend_url = "https://d1234abcd.cloudfront.net"
+# Or with custom domain:
+# domain_name  = "sodakanban.kfsoda.tech"
+# frontend_url = "https://sodakanban.kfsoda.tech"
 
 # Sensitive — pass via CLI or environment instead of committing:
 # database_password = "..."
