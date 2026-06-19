@@ -68,7 +68,7 @@ export const userApi = {
     const formData = new FormData();
     formData.append("file", file);
     return api.post<User>("/users/me/avatar", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+      headers: { "Content-Type": undefined },
     }).then((r) => r.data);
   },
   fetchAvatar: () => api.get<Blob>("/users/me/avatar", { responseType: "blob" }).then((r) => r.data),
