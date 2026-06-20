@@ -1,11 +1,13 @@
 import axios from "axios";
 import type {
+  Attachment,
   Board,
   BoardDetail,
   Card,
   Comment,
   Invitation,
   NotificationPreference,
+  PresignedUploadResponse,
   TokenResponse,
   User,
   Workspace,
@@ -113,4 +115,48 @@ export const boardApi = {
   comments: (cardId: string) => api.get<Comment[]>(`/cards/${cardId}/comments`),
   addComment: (cardId: string, content: string) =>
     api.post<Comment>(`/cards/${cardId}/comments`, { content }),
+  attachments: (cardId: string) => api.get<Attachment[]>(`/cards/${cardId}/attachments`),
+  getAttachmentUploadUrl: (
+    cardId: string,
+    payload: { filename: string; content_type: string | null; size_bytes: number }
+  ) => api.post<PresignedUploadResponse>(`/cards/${cardId}/attachments/upload-url`, payload),
+  confirmAttachment: (cardId: string, attachmentId: string) =>
+    api.post<Attachment>(`/cards/${cardId}/attachments/${attachmentId}/confirm`),
+  deleteAttachment: (cardId: string, attachmentId: string) =>
+    api.delete(`/cards/${cardId}/attachments/${attachmentId}`),
 };
+
+export async function uploadFileToPresignedUrl(uploadUrl: string, file: File): Promise<void> {
+  const res = await fetch(uploadUrl, {
+    method: "PUT",
+    body: file,
+    headers: { "Content-Type": file.type || "application/octet-stream" },
+  });
+  if (!res.ok) {
+    throw new Error("Upload failed");
+  }
+}
+
+export async function uploadAttachment(cardId: string, file: File): Promise<Attachment> {
+  let attachmentId: string | null = null;
+  try {
+    const { data } = await boardApi.getAttachmentUploadUrl(cardId, {
+      filename: file.name,
+      content_type: file.type || null,
+      size_bytes: file.size,
+    });
+    attachmentId = data.attachment_id;
+    await uploadFileToPresignedUrl(data.upload_url, file);
+    const { data: attachment } = await boardApi.confirmAttachment(cardId, data.attachment_id);
+    return attachment;
+  } catch (error) {
+    if (attachmentId) {
+      try {
+        await boardApi.deleteAttachment(cardId, attachmentId);
+      } catch {
+        // Best-effort cleanup
+      }
+    }
+    throw error;
+  }
+}

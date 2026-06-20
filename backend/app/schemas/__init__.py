@@ -229,7 +229,7 @@ class CommentRead(BaseModel):
 class AttachmentCreate(BaseModel):
     filename: str
     content_type: str | None = None
-    size_bytes: int | None = None
+    size_bytes: int
 
 
 class AttachmentRead(BaseModel):

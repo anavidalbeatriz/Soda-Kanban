@@ -24,6 +24,18 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "attachments" {
   }
 }
 
+resource "aws_s3_bucket_cors_configuration" "attachments" {
+  bucket = aws_s3_bucket.attachments.id
+
+  cors_rule {
+    allowed_headers = ["Content-Type", "Content-Length"]
+    allowed_methods = ["PUT", "GET", "HEAD"]
+    allowed_origins = [var.frontend_url]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3600
+  }
+}
+
 output "frontend_bucket_name" {
   value = aws_s3_bucket.frontend.bucket
 }

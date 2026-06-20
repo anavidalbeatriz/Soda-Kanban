@@ -1,9 +1,11 @@
 import logging
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import boto3
 from botocore.exceptions import ClientError
-from sqlalchemy import select
+from fastapi import HTTPException, status
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -12,6 +14,7 @@ from app.services.permissions import get_card_with_board, require_board_write
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+PENDING_ATTACHMENT_TTL = timedelta(hours=1)
 
 
 def _s3_client():
@@ -25,13 +28,47 @@ def _ses_client():
     return boto3.client("ses", region_name=settings.aws_region)
 
 
+def delete_s3_object(s3_key: str) -> None:
+    try:
+        _s3_client().delete_object(Bucket=settings.s3_bucket, Key=s3_key)
+    except ClientError:
+        logger.exception("Failed to delete S3 object %s", s3_key)
+
+
+def _validate_attachment_size(size_bytes: int) -> None:
+    if size_bytes > settings.max_attachment_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File is too large (max 10MB)",
+        )
+
+
+async def cleanup_stale_pending_attachments(db: AsyncSession, card_id: uuid.UUID) -> None:
+    cutoff = datetime.now(UTC) - PENDING_ATTACHMENT_TTL
+    await db.execute(
+        delete(Attachment).where(
+            Attachment.card_id == card_id,
+            Attachment.size_bytes.is_(None),
+            Attachment.created_at < cutoff,
+        )
+    )
+
+
 async def create_presigned_upload(
-    db: AsyncSession, card_id: uuid.UUID, user: User, filename: str, content_type: str | None
+    db: AsyncSession,
+    card_id: uuid.UUID,
+    user: User,
+    filename: str,
+    content_type: str | None,
+    size_bytes: int,
 ) -> tuple[Attachment, str]:
     card = await get_card_with_board(db, card_id)
     if not card:
         raise ValueError("Card not found")
     await require_board_write(db, card.board_list.board_id, user)
+    _validate_attachment_size(size_bytes)
+
+    await cleanup_stale_pending_attachments(db, card_id)
 
     attachment_id = uuid.uuid4()
     s3_key = f"workspaces/cards/{card_id}/{attachment_id}-{filename}"
@@ -57,6 +94,50 @@ async def create_presigned_upload(
         ExpiresIn=settings.presigned_url_expire_seconds,
     )
     return attachment, upload_url
+
+
+async def confirm_attachment(
+    db: AsyncSession, card_id: uuid.UUID, attachment_id: uuid.UUID, user: User
+) -> Attachment:
+    card = await get_card_with_board(db, card_id)
+    if not card:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
+    await require_board_write(db, card.board_list.board_id, user)
+
+    result = await db.execute(
+        select(Attachment).where(Attachment.id == attachment_id, Attachment.card_id == card_id)
+    )
+    attachment = result.scalar_one_or_none()
+    if not attachment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attachment not found")
+
+    client = _s3_client()
+    try:
+        head = client.head_object(Bucket=settings.s3_bucket, Key=attachment.s3_key)
+    except ClientError as exc:
+        error_code = exc.response.get("Error", {}).get("Code")
+        if error_code in {"404", "NoSuchKey", "NotFound"}:
+            await db.delete(attachment)
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Attachment not found"
+            ) from exc
+        logger.exception("Failed to head S3 object %s", attachment.s3_key)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail="Could not verify upload"
+        ) from exc
+
+    content_length = head.get("ContentLength", 0)
+    if content_length > settings.max_attachment_bytes:
+        delete_s3_object(attachment.s3_key)
+        await db.delete(attachment)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File is too large (max 10MB)",
+        )
+
+    attachment.size_bytes = content_length
+    await db.flush()
+    return attachment
 
 
 async def create_presigned_download(attachment: Attachment) -> str:

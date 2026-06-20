@@ -69,6 +69,24 @@ export interface Comment {
   author: User;
 }
 
+export const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
+export interface Attachment {
+  id: string;
+  card_id: string;
+  filename: string;
+  content_type: string | null;
+  size_bytes: number | null;
+  created_at: string;
+  download_url: string | null;
+}
+
+export interface PresignedUploadResponse {
+  upload_url: string;
+  attachment_id: string;
+  s3_key: string;
+}
+
 export interface BoardDetail {
   board: Board;
   lists: BoardList[];

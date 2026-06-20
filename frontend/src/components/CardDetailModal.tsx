@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Card, WorkspaceMember } from "../types";
 import { boardApi } from "../api/client";
 import { CardFields } from "./CardFields";
+import { CardAttachments } from "./CardAttachments";
 import { ConfirmModal } from "./ui/ConfirmModal";
 import { Modal } from "./ui/Modal";
 import { btnDanger, btnPrimary, inputClass } from "./ui/styles";
@@ -124,6 +125,8 @@ export function CardDetailModal({ card, onClose, members }: CardDetailModalProps
             message={`Delete "${card.title}"? This cannot be undone.`}
             isSubmitting={deleteMutation.isPending}
           />
+
+          <CardAttachments cardId={card.id} />
 
           <div className="border-t border-gray-700 pt-4">
             <h3 className="mb-3 text-sm font-medium text-gray-300">Comments</h3>

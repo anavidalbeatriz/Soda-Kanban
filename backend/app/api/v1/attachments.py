@@ -8,7 +8,12 @@ from app.auth.dependencies import get_current_user
 from app.db.models import Attachment, User
 from app.db.session import get_db
 from app.schemas import AttachmentCreate, AttachmentRead, PresignedUploadResponse
-from app.services.attachments import create_presigned_download, create_presigned_upload
+from app.services.attachments import (
+    confirm_attachment,
+    create_presigned_download,
+    create_presigned_upload,
+    delete_s3_object,
+)
 from app.services.permissions import get_card_with_board, require_board_write
 
 router = APIRouter(prefix="/cards/{card_id}/attachments", tags=["attachments"])
@@ -24,7 +29,12 @@ async def list_attachments(
     if not card:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
     await require_board_write(db, card.board_list.board_id, user)
-    result = await db.execute(select(Attachment).where(Attachment.card_id == card_id))
+    result = await db.execute(
+        select(Attachment).where(
+            Attachment.card_id == card_id,
+            Attachment.size_bytes.isnot(None),
+        )
+    )
     attachments = list(result.scalars().all())
     response = []
     for attachment in attachments:
@@ -43,17 +53,33 @@ async def get_upload_url(
 ) -> PresignedUploadResponse:
     try:
         attachment, upload_url = await create_presigned_upload(
-            db, card_id, user, payload.filename, payload.content_type
+            db,
+            card_id,
+            user,
+            payload.filename,
+            payload.content_type,
+            payload.size_bytes,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    if payload.size_bytes:
-        attachment.size_bytes = payload.size_bytes
     return PresignedUploadResponse(
         upload_url=upload_url,
         attachment_id=attachment.id,
         s3_key=attachment.s3_key,
     )
+
+
+@router.post("/{attachment_id}/confirm", response_model=AttachmentRead)
+async def confirm_upload(
+    card_id: uuid.UUID,
+    attachment_id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> AttachmentRead:
+    attachment = await confirm_attachment(db, card_id, attachment_id, user)
+    item = AttachmentRead.model_validate(attachment)
+    item.download_url = await create_presigned_download(attachment)
+    return item
 
 
 @router.delete("/{attachment_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -73,4 +99,5 @@ async def delete_attachment(
     attachment = result.scalar_one_or_none()
     if not attachment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attachment not found")
+    delete_s3_object(attachment.s3_key)
     await db.delete(attachment)
