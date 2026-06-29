@@ -59,6 +59,11 @@ export function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
+        <p className="text-right text-sm">
+          <Link to="/reset-password" className="text-blue-400 hover:text-blue-300 hover:underline">
+            Forgot password?
+          </Link>
+        </p>
         <button type="submit" className={`w-full ${btnPrimary} py-2.5`}>
           Sign in
         </button>
@@ -146,6 +151,91 @@ export function RegisterPage() {
       </form>
       <p className="text-center text-sm text-gray-400 mt-6">
         Already have an account?{" "}
+        <Link to="/login" className="text-blue-400 hover:text-blue-300 hover:underline">
+          Sign in
+        </Link>
+      </p>
+    </AuthFormShell>
+  );
+}
+
+export function ResetPasswordPage() {
+  const navigate = useNavigate();
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    try {
+      const { data } = await authApi.resetPassword({ email, password });
+      setAuth(data.user, data.access_token, data.refresh_token);
+      navigate(workspaceHomePath(data.user));
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number; data?: { detail?: string } } })?.response
+        ?.status;
+      const detail = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail;
+      if (status === 404) {
+        setError(
+          typeof detail === "string" && detail ? detail : "No account found for this email",
+        );
+        return;
+      }
+      setError("Could not reset password. Please try again.");
+    }
+  };
+
+  return (
+    <AuthFormShell>
+      <h1 className="text-2xl font-bold text-white mb-2">Reset password</h1>
+      <p className="text-sm text-gray-400 mb-6">Enter your email and choose a new password.</p>
+      {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className={labelClass}>Email</label>
+          <input
+            type="email"
+            required
+            className={inputClass}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>New password</label>
+          <input
+            type="password"
+            required
+            minLength={8}
+            className={inputClass}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Confirm password</label>
+          <input
+            type="password"
+            required
+            minLength={8}
+            className={inputClass}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+        </div>
+        <button type="submit" className={`w-full ${btnPrimary} py-2.5`}>
+          Reset password
+        </button>
+      </form>
+      <p className="text-center text-sm text-gray-400 mt-6">
+        Remember your password?{" "}
         <Link to="/login" className="text-blue-400 hover:text-blue-300 hover:underline">
           Sign in
         </Link>

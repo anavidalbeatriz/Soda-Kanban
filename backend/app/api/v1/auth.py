@@ -3,11 +3,24 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.jwt import create_access_token, create_refresh_token, revoke_refresh_token, verify_refresh_token
+from app.auth.jwt import (
+    create_access_token,
+    create_refresh_token,
+    revoke_all_refresh_tokens,
+    revoke_refresh_token,
+    verify_refresh_token,
+)
 from app.auth.password import hash_password, verify_password
 from app.db.models import User, Workspace, WorkspaceMember, WorkspaceRole
 from app.db.session import get_db
-from app.schemas import LoginRequest, RefreshRequest, RegisterRequest, TokenResponse, UserRead
+from app.schemas import (
+    LoginRequest,
+    PasswordResetRequest,
+    RefreshRequest,
+    RegisterRequest,
+    TokenResponse,
+    UserRead,
+)
 from app.services.attachments import ensure_default_notification_preferences
 from app.services.invitations import redeem_invitation, INVITE_ERROR_MESSAGES
 
@@ -97,3 +110,25 @@ async def refresh(payload: RefreshRequest, db: AsyncSession = Depends(get_db)) -
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(payload: RefreshRequest, db: AsyncSession = Depends(get_db)) -> None:
     await revoke_refresh_token(db, payload.refresh_token)
+
+
+@router.post("/reset-password", response_model=TokenResponse)
+async def reset_password(payload: PasswordResetRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
+    result = await db.execute(select(User).where(User.email == payload.email))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found for this email",
+        )
+
+    user.password_hash = hash_password(payload.password)
+    await revoke_all_refresh_tokens(db, user.id)
+
+    access_token = create_access_token(user.id)
+    refresh_token = await create_refresh_token(db, user.id)
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        user=UserRead.model_validate(user),
+    )

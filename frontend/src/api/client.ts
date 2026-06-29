@@ -59,6 +59,8 @@ export const authApi = {
     api.post<TokenResponse>("/auth/register", payload),
   login: (payload: { email: string; password: string }) =>
     api.post<TokenResponse>("/auth/login", payload),
+  resetPassword: (payload: { email: string; password: string }) =>
+    api.post<TokenResponse>("/auth/reset-password", payload),
   logout: () => api.post("/auth/logout", { refresh_token: localStorage.getItem("refresh_token") }),
 };
 

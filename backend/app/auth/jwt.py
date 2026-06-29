@@ -4,7 +4,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import jwt
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -59,6 +59,10 @@ async def revoke_refresh_token(db: AsyncSession, token: str) -> None:
     refresh_token = result.scalar_one_or_none()
     if refresh_token:
         await db.delete(refresh_token)
+
+
+async def revoke_all_refresh_tokens(db: AsyncSession, user_id: uuid.UUID) -> None:
+    await db.execute(delete(RefreshToken).where(RefreshToken.user_id == user_id))
 
 
 def decode_access_token(token: str) -> uuid.UUID | None:
